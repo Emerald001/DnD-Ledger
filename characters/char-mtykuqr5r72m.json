@@ -1,0 +1,514 @@
+{
+  "meta": {
+    "name": "Professor Malvorin Bloodvane (Azureborn)",
+    "classes": [
+      {
+        "class": "Sorcerer",
+        "level": 4
+      }
+    ],
+    "race": "Azureborn",
+    "background": "Scholar of the Forbidden",
+    "alignment": "Chaotic Good",
+    "playerName": "Andries",
+    "xp": 0,
+    "portrait": ""
+  },
+  "settings": {
+    "spellcasting": true,
+    "summons": true,
+    "deathSaves": true,
+    "inspiration": true,
+    "exhaustion": true,
+    "encumbrance": true,
+    "currency": true,
+    "initiative": true,
+    "portraitBackground": true
+  },
+  "abilities": {
+    "str": 8,
+    "dex": 14,
+    "con": 14,
+    "int": 12,
+    "wis": 10,
+    "cha": 18
+  },
+  "saves": {
+    "str": false,
+    "dex": false,
+    "con": true,
+    "int": false,
+    "wis": false,
+    "cha": true
+  },
+  "skills": {
+    "acrobatics": {
+      "prof": false,
+      "exp": false
+    },
+    "animalHandling": {
+      "prof": false,
+      "exp": false
+    },
+    "arcana": {
+      "prof": true,
+      "exp": false
+    },
+    "athletics": {
+      "prof": false,
+      "exp": false
+    },
+    "deception": {
+      "prof": false,
+      "exp": false
+    },
+    "history": {
+      "prof": false,
+      "exp": false
+    },
+    "insight": {
+      "prof": false,
+      "exp": false
+    },
+    "intimidation": {
+      "prof": true,
+      "exp": false
+    },
+    "investigation": {
+      "prof": false,
+      "exp": false
+    },
+    "medicine": {
+      "prof": false,
+      "exp": false
+    },
+    "nature": {
+      "prof": false,
+      "exp": false
+    },
+    "perception": {
+      "prof": false,
+      "exp": false
+    },
+    "performance": {
+      "prof": false,
+      "exp": false
+    },
+    "persuasion": {
+      "prof": true,
+      "exp": false
+    },
+    "religion": {
+      "prof": true,
+      "exp": false
+    },
+    "sleightOfHand": {
+      "prof": false,
+      "exp": false
+    },
+    "stealth": {
+      "prof": false,
+      "exp": false
+    },
+    "survival": {
+      "prof": false,
+      "exp": false
+    }
+  },
+  "combat": {
+    "acBonus": 4,
+    "initMisc": 0,
+    "speed": 30,
+    "speedMod": 0,
+    "speedModPrev": 0,
+    "hpMax": 30,
+    "hpCurrent": 30,
+    "hpTemp": 0,
+    "hitDicePools": [
+      {
+        "class": "Sorcerer",
+        "die": 6,
+        "total": 4,
+        "used": 0
+      }
+    ],
+    "deathSuccess": [
+      false,
+      false,
+      false
+    ],
+    "deathFail": [
+      false,
+      false,
+      false
+    ],
+    "inspiration": false,
+    "exhaustion": 0,
+    "concentration": {
+      "active": false,
+      "spell": ""
+    },
+    "conditions": {
+      "blinded": false,
+      "charmed": false,
+      "deafened": false,
+      "frightened": false,
+      "grappled": false,
+      "incapacitated": false,
+      "invisible": false,
+      "paralyzed": false,
+      "petrified": false,
+      "poisoned": false,
+      "prone": false,
+      "restrained": false,
+      "stunned": false,
+      "unconscious": false
+    },
+    "spellEffects": []
+  },
+  "attacks": [],
+  "resources": [
+    {
+      "name": "Sorcery Points",
+      "current": 4,
+      "max": 4,
+      "notes": "",
+      "resetOn": "long"
+    },
+    {
+      "name": "Innate Sorcery",
+      "current": 2,
+      "max": 2,
+      "notes": "As a Bonus Action, you can unleash that magic for 1 minute, during which you gain the following benefits:\n\n    The spell save DC of your Sorcerer spells increases by 1.\n    You have Advantage on the attack rolls of Sorcerer spells you cast.",
+      "resetOn": "none"
+    },
+    {
+      "name": "Eldritch Word",
+      "current": 1,
+      "max": 1,
+      "notes": "Bonus Action, speak a magical word aloud to force a creature within 60 feet of yourself to make a Wisdom saving throw against the spellcasting DC. Failed save, the target has the Frightened condition until the start of your next turn. \n\nYou can use it again before resting, but you take 1d6 Necrotic damage, which can't be reduced or prevented in any way.",
+      "resetOn": "short"
+    },
+    {
+      "name": "Free Bane",
+      "current": 1,
+      "max": 1,
+      "notes": "",
+      "resetOn": "long"
+    },
+    {
+      "name": "Glimpse Fate",
+      "current": 1,
+      "max": 1,
+      "notes": "When you roll Initiative, if you aren't surprised, you can choose a number of creatures that you can see equal to your Proficiency Bonus. The targets have Advantage on their Initiative rolls. ",
+      "resetOn": "short"
+    },
+    {
+      "name": "Winds of Magic",
+      "current": 2,
+      "max": 2,
+      "notes": "As a Bonus Action, you can take the Dash action and increase your Fly Speed by 10 feet until the end of the turn. ",
+      "resetOn": "long"
+    },
+    {
+      "name": "Free Misty Step",
+      "current": 1,
+      "max": 1,
+      "notes": "",
+      "resetOn": "long"
+    },
+    {
+      "name": "Free Ancestral Communion",
+      "current": 1,
+      "max": 1,
+      "notes": "",
+      "resetOn": "long"
+    }
+  ],
+  "currency": {
+    "cp": 0,
+    "sp": 0,
+    "ep": 0,
+    "gp": 35,
+    "pp": 0
+  },
+  "equipment": [
+    {
+      "name": "Calligrapher's Supplies",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Book (a topic of arcana)",
+      "qty": 1,
+      "weight": 0,
+      "notes": "Own Notebook on all spells he knows",
+      "attuned": false
+    },
+    {
+      "name": "Ink",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Ink Pen",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Lamp",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Oil",
+      "qty": 5,
+      "weight": 0,
+      "notes": "A flask contains",
+      "attuned": false
+    },
+    {
+      "name": "Paper",
+      "qty": 10,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Fine Clothes",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Arcane Focus",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Dungeoneers pack",
+      "qty": 1,
+      "weight": 0,
+      "notes": "Backpack, Caltrops, Crowbar, 10 days of Rations, Rope, Tinderbox, 10 Torches, and Waterskin.",
+      "attuned": false
+    }
+  ],
+  "spellcasting": {
+    "ability": "cha",
+    "slots": [
+      {
+        "total": 4,
+        "current": 4
+      },
+      {
+        "total": 3,
+        "current": 3
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      }
+    ],
+    "pact": {
+      "level": 0,
+      "slots": 0,
+      "current": 0
+    }
+  },
+  "spells": [
+    {
+      "level": 0,
+      "name": "Guidance",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 1,
+      "name": "Bane",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 2,
+      "name": "Augury",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 0,
+      "name": "Prestidigitation",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 0,
+      "name": "Sorcerous Burst",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 0,
+      "name": "Message",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 0,
+      "name": "Minor Illusion",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 0,
+      "name": "Mind Sliver",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 2,
+      "name": "Alter Self",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 1,
+      "name": "Chromatic Orb",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 1,
+      "name": "Command",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 2,
+      "name": "Dragon's breath",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 1,
+      "name": "Magic Missile",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 1,
+      "name": "Witch Bolt",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 2,
+      "name": "Misty Step",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 2,
+      "name": "Shatter",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 1,
+      "name": "Shield",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 2,
+      "name": "Mirror Images",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    },
+    {
+      "level": 1,
+      "name": "Detect Magic",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 1,
+      "name": "Ancestral Communion",
+      "prepared": false,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 1,
+      "name": "Devils Due",
+      "prepared": false,
+      "notes": "",
+      "combat": true
+    }
+  ],
+  "summons": [],
+  "notes": {
+    "profLang": "Languages: Common, Deep speach\nTool Proficiency: Calligrapher's Supplies\nWeapon Proficiencies: Simple weapons\n\nDarkvision. You have Darkvision with a range of 60 feet.",
+    "features": "",
+    "personality": "",
+    "ideals": "",
+    "bonds": "",
+    "flaws": "",
+    "backstory": "",
+    "spellNotes": "Quickened Spell\nCost: 2 Sorcery Points\nWhen you cast a spell that has a casting time of an action, you can spend 2 Sorcery Points to change the casting time to a Bonus Action for this casting. You can't modify a spell in this way if you've already cast a level 1+ spell on the current turn, nor can you cast a level 1+ spell on this turn after modifying a spell in this way.\n\nTwinned Spell\nCost: 1 Sorcery Point\nWhen you cast a spell, such as Charm Person, that can be cast with a higher-level spell slot to target an additional creature, you can spend 1 Sorcery Point to increase the spell's effective level by 1",
+    "quickNote": ""
+  }
+}

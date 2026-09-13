@@ -1,0 +1,388 @@
+{
+  "meta": {
+    "name": "Jezabel Stringara",
+    "race": "Threadborn",
+    "background": "Druskenwald Dweller",
+    "alignment": "Chaotic Neutral",
+    "playerName": "Thymo",
+    "xp": 0,
+    "classes": [
+      {
+        "class": "Rogue",
+        "level": 4
+      }
+    ],
+    "portrait": ""
+  },
+  "settings": {
+    "spellcasting": true,
+    "summons": true,
+    "deathSaves": true,
+    "inspiration": true,
+    "exhaustion": true,
+    "encumbrance": true,
+    "currency": true,
+    "initiative": true,
+    "portraitBackground": true
+  },
+  "abilities": {
+    "str": 10,
+    "dex": 18,
+    "con": 13,
+    "int": 12,
+    "wis": 8,
+    "cha": 15
+  },
+  "saves": {
+    "str": false,
+    "dex": true,
+    "con": false,
+    "int": true,
+    "wis": false,
+    "cha": false
+  },
+  "skills": {
+    "acrobatics": {
+      "prof": true,
+      "exp": false
+    },
+    "animalHandling": {
+      "prof": false,
+      "exp": false
+    },
+    "arcana": {
+      "prof": false,
+      "exp": false
+    },
+    "athletics": {
+      "prof": true,
+      "exp": false
+    },
+    "deception": {
+      "prof": false,
+      "exp": false
+    },
+    "history": {
+      "prof": false,
+      "exp": false
+    },
+    "insight": {
+      "prof": false,
+      "exp": false
+    },
+    "intimidation": {
+      "prof": false,
+      "exp": false
+    },
+    "investigation": {
+      "prof": false,
+      "exp": false
+    },
+    "medicine": {
+      "prof": false,
+      "exp": false
+    },
+    "nature": {
+      "prof": false,
+      "exp": false
+    },
+    "perception": {
+      "prof": false,
+      "exp": false
+    },
+    "performance": {
+      "prof": true,
+      "exp": false
+    },
+    "persuasion": {
+      "prof": false,
+      "exp": false
+    },
+    "religion": {
+      "prof": false,
+      "exp": false
+    },
+    "sleightOfHand": {
+      "prof": true,
+      "exp": false
+    },
+    "stealth": {
+      "prof": true,
+      "exp": false
+    },
+    "survival": {
+      "prof": true,
+      "exp": false
+    }
+  },
+  "combat": {
+    "acBonus": 1,
+    "initMisc": 0,
+    "speed": 30,
+    "speedMod": 0,
+    "speedModPrev": 0,
+    "hpMax": 32,
+    "hpCurrent": 32,
+    "hpTemp": 0,
+    "deathSuccess": [
+      false,
+      false,
+      false
+    ],
+    "deathFail": [
+      false,
+      false,
+      false
+    ],
+    "inspiration": false,
+    "exhaustion": 0,
+    "concentration": {
+      "active": false,
+      "spell": ""
+    },
+    "conditions": {
+      "blinded": false,
+      "charmed": false,
+      "deafened": false,
+      "frightened": false,
+      "grappled": false,
+      "incapacitated": false,
+      "invisible": false,
+      "paralyzed": false,
+      "petrified": false,
+      "poisoned": false,
+      "prone": false,
+      "restrained": false,
+      "stunned": false,
+      "unconscious": false
+    },
+    "spellEffects": [],
+    "hitDicePools": [
+      {
+        "class": "Rogue",
+        "die": 8,
+        "total": 4,
+        "used": 0
+      }
+    ]
+  },
+  "attacks": [
+    {
+      "name": "Pistol",
+      "bonus": "+6",
+      "damage": "1D10 +3 Force",
+      "notes": ""
+    },
+    {
+      "name": "Hand Crossbow",
+      "bonus": "+5",
+      "damage": "1D6 +3 Piercing ",
+      "notes": ""
+    },
+    {
+      "name": "Dagger x2",
+      "bonus": "+5",
+      "damage": "1D4 +3 Piercing ",
+      "notes": ""
+    }
+  ],
+  "resources": [
+    {
+      "name": "You've Got a Friend.",
+      "current": 2,
+      "max": 2,
+      "notes": "30 feet of yourself fails an ability check using a\nskill, you can take a Reaction to cast Guidance on the\ncreature, ignoring the spell's normal range. The creature\ncan add the spell's 1d4 to its ability check",
+      "resetOn": "long"
+    },
+    {
+      "name": "Sanctury ",
+      "current": 1,
+      "max": 1,
+      "notes": "",
+      "resetOn": "long"
+    },
+    {
+      "name": "Hexslinger",
+      "current": 2,
+      "max": 2,
+      "notes": "",
+      "resetOn": "short"
+    },
+    {
+      "name": "The Bag's Claw",
+      "current": 3,
+      "max": 3,
+      "notes": "While holding the bag, you can take a Bonus Action to have the lurker in the dark lash out with its claw at a creature within 5 feet of you. Make a melee attack roll with a +7 bonus. On a hit, the claw deals 1d10 + 4 Piercing damage. If the target is a Medium or smaller creature, it has the Grappled condition (escape DC 14) from the claw, and it has the Restrained condition until the grapple ends. This property can be used three times, regaining all expended uses daily at dusk.",
+      "resetOn": "long"
+    }
+  ],
+  "currency": {
+    "cp": 0,
+    "sp": 0,
+    "ep": 0,
+    "gp": 0,
+    "pp": 0
+  },
+  "equipment": [
+    {
+      "name": "Map",
+      "qty": 1,
+      "weight": 0,
+      "notes": "of druskenwald",
+      "attuned": false
+    },
+    {
+      "name": "Travelers clothes",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Thieves tools",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    },
+    {
+      "name": "Fine clothes",
+      "qty": 1,
+      "weight": 0,
+      "notes": "Dress",
+      "attuned": false
+    },
+    {
+      "name": "Old bag",
+      "qty": 1,
+      "weight": 0,
+      "notes": "Bag of many things",
+      "attuned": true
+    },
+    {
+      "name": "Parts of Isaac",
+      "qty": 1,
+      "weight": 0,
+      "notes": "",
+      "attuned": false
+    }
+  ],
+  "spellcasting": {
+    "ability": "int",
+    "slots": [
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      },
+      {
+        "total": 0,
+        "current": 0
+      }
+    ],
+    "pact": {
+      "level": 0,
+      "slots": 0,
+      "current": 0
+    }
+  },
+  "spells": [
+    {
+      "level": 0,
+      "name": "Mage hand",
+      "prepared": true,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 0,
+      "name": "Guidance",
+      "prepared": true,
+      "notes": "",
+      "combat": false
+    },
+    {
+      "level": 0,
+      "name": "Sanctury ",
+      "prepared": true,
+      "notes": "",
+      "combat": false
+    }
+  ],
+  "summons": [
+    {
+      "name": "Ghost Crawler",
+      "meta": "Tiny Undead",
+      "ac": "13",
+      "initiative": "+3",
+      "hpMax": 25,
+      "hpCurrent": 0,
+      "hpFormula": "(10d4)",
+      "speed": "30 ft., Climb 30 ft.",
+      "abilities": {
+        "str": 2,
+        "dex": 16,
+        "con": 10,
+        "int": 1,
+        "wis": 10,
+        "cha": 2
+      },
+      "saves": "",
+      "skills": "Stealth +5",
+      "vulnerabilities": "",
+      "resistances": "",
+      "immunities": "",
+      "conditionImmunities": "",
+      "senses": "Darkvision 30 ft., Seer's Strand (see below), Passive Perception 10",
+      "languages": "Understands Common but can't speak",
+      "cr": "1 (XP 200; PB +2)",
+      "profBonus": "",
+      "traits": "Ephemeral Body. The crawler can move through a space as narrow as 1 inch without expending extra movement to do so.\n\nSeer's Strand. The crawler can see and hear through the space of its Ether Webs as if it were in that space.\n\nSpider Climb. The crawler can climb difficult surfaces, including along ceilings, without needing to make an ability check.\nWeb Walker. The crawler ignores movement restrictions caused by webs, and the crawler knows the location of any other creature in contact with the same web.",
+      "actions": "Multiattack. The crawler makes two Bite attacks.\n\nBite. Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4 + 3) Piercing damage, and if the target is a creature, it has the Poisoned condition until the start of the crawler's next turn.\n\nEther Webs (2/Day). The crawler fills a 5-foot Cube with Invisible, ephemeral webs for 8 hours. If the web isn't anchored between two solid masses (such as walls or trees) or layered across a floor, wall, or ceiling, the web collapses on itself and vanishes. When a creature touches the webbing, the crawler knows the location of the creature as long as they are on the same plane of existence.",
+      "bonusActions": "",
+      "reactions": "",
+      "legendary": "",
+      "resources": [],
+      "notes": "",
+      "raw": "Ghost Crawler\nTCM'24\np585\nTiny Undead, Unaligned\nAC 13\nInitiative +3 (13)\nHP 25 (10d4)\nSpeed 30 ft., Climb 30 ft.\nmod\nsave\nmod\nsave\nmod\nsave\nStr\n2\n-4\n-4\nDex\n16\n+3\n+3\nCon\n10\n+0\n+0\nInt\n1\n-5\n-5\nWis\n10\n+0\n+0\nCha\n2\n-4\n-4\nSkills Stealth +5\nSenses Darkvision 30 ft., Seer's Strand (see below), Passive Perception 10\nLanguages Understands Common but can't speak\nCR 1 (XP 200; PB +2) \nTraits\nEphemeral Body. The crawler can move through a space as narrow as 1 inch without expending extra movement to do so.\n\nSeer's Strand. The crawler can see and hear through the space of its Ether Webs as if it were in that space.\n\nSpider Climb. The crawler can climb difficult surfaces, including along ceilings, without needing to make an ability check.\n\nWeb Walker. The crawler ignores movement restrictions caused by webs, and the crawler knows the location of any other creature in contact with the same web.\n\nActions\nMultiattack. The crawler makes two Bite attacks.\n\nBite. Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4 + 3) Piercing damage, and if the target is a creature, it has the Poisoned condition until the start of the crawler's next turn.\n\nEther Webs (2/Day). The crawler fills a 5-foot Cube with Invisible, ephemeral webs for 8 hours. If the web isn't anchored between two solid masses (such as walls or trees) or layered across a floor, wall, or ceiling, the web collapses on itself and vanishes. When a creature touches the webbing, the crawler knows the location of the creature as long as they are on the same plane of existence."
+    }
+  ],
+  "notes": {
+    "profLang": "Light armor\n\nSimple weapons and Martial weapons that have the Finesse or Light property\n\nResistance Psychic \nWood workers tools\nThieves tools\nPlanning cards and dice",
+    "features": "",
+    "personality": "Crazy, likes explosions ",
+    "ideals": "Just wants to live her life the way she wants",
+    "bonds": "Cornelius",
+    "flaws": "Crazy",
+    "backstory": "Thread of Liberation\n\nMade to be to be an acrobat in a the acrobat in funtopia, but Jezabel enjoyed more chaotic endeavors. During a performance she started shooting wildly injuring multiple visitors. She was then imprisoned, she escaped from the prison, for which a bounty was placed on her head, so she's on the run from a bogborn bounty hunter",
+    "spellNotes": "Jinx weapon\nHex Slinger Jinxes\n2d6 Jinx\n\n2 Snake Eyes. On the target\u2019s next turn, it can only do\none of the following: move or take an action or a\nBonus Action. If it targets you or your allies with an\nattack on that turn, it takes 2d6 Psychic damage.\n\n3\u20134 The Nightmare. The target has the Frightened\ncondition until the end of its next turn, and it must\nimmediately take a Reaction to move as far as it\ncan away from you, up to its Speed.\n\n5\u20136 Whiskey Bottle. The target drops anything it\u2019s\nholding. Until the end of its next turn, when the\ntarget picks up an item, it must succeed on a DC 15\nDexterity saving throw or drop the item immediately.\n7 Cheap Shot. Until the end of its next turn, the\ntarget\u2019s Speed is halved, and for that duration,\nattack rolls against it have Advantage.\n\n8\u20139 Withered Arm. \nUntil the end of its next turn, the\ntarget has Disadvantage on D20 Tests that rely\non Strength.\n\n10\u201311 Bad Luck. Until the end of its next turn, when the\ntarget makes an attack roll or a saving throw, it\nsubtracts 1d6 from the total.\n\n12 Dead Man. If the next attack roll you make before\nthe end of your next turn misses, it hits instead. If\nthat first attack roll hits, the attack is automatically\na Critical Hit. If you roll a 20 on the d20, roll the\nattack\u2019s damage dice three times instead of twice\n\nVex: If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.\n\nSharpshooter:\nBypass Cover. Your ranged attacks with weapons ignore Half Cover and Three-Quarters Cover.\n\nFiring in Melee. Being within 5 feet of an enemy doesn't impose Disadvantage on your attack rolls with Ranged weapons.\n\nLong Shots. Attacking at long range doesn't impose Disadvantage on your attack rolls with Ranged weapons.",
+    "quickNote": ""
+  }
+}
