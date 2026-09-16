@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="theme.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DM Screen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="dmscreen">
+  <header class="dmscreen-topbar">
+    <div>
+      <div class="dmscreen-title display" id="dm-campaign-title">DM Screen</div>
+      <div class="dmscreen-subtitle">Dungeon Master View — hidden from players</div>
+    </div>
+    <div class="dmscreen-view-toggle" id="dmscreen-view-toggle">
+      <button type="button" class="dmscreen-view-btn dmscreen-view-active" data-view="dashboard">Dashboard</button>
+      <button type="button" class="dmscreen-view-btn" data-view="battlemap">Battle Map</button>
+    </div>
+    <button class="btn" id="btn-dm-logout">Log Out</button>
+  </header>
+
+  <main class="dmscreen-body">
+    <div class="dmscreen-view" id="dmscreen-view-dashboard">
+    <div class="dmscreen-columns">
+      <section class="dmscreen-col dmscreen-col-initiative">
+        <div class="dmscreen-col-header">
+          <span class="section-title" style="margin:0;">Initiative</span>
+          <span class="mono" style="font-size:10px;color:var(--parchment-dim);">Round <span id="dm-initiative-round">1</span></span>
+        </div>
+        <div class="initiative-list" id="dm-initiative-list"></div>
+        <div class="initiative-campaign-picker" id="dm-initiative-campaign-picker"></div>
+        <div class="effects-add-row">
+          <input type="text" id="dm-initiative-name-input" placeholder="Name">
+          <input type="number" class="no-spin initiative-value-input" id="dm-initiative-value-input" placeholder="Init">
+          <button class="btn" id="btn-dm-add-initiative">+</button>
+        </div>
+        <div class="initiative-controls">
+          <button class="btn" id="btn-dm-initiative-prev">&#9664; Prev</button>
+          <button class="btn" id="btn-dm-initiative-next">Next Turn</button>
+          <button class="btn" id="btn-dm-initiative-reset">Reset</button>
+        </div>
+      </section>
+
+      <section class="dmscreen-col dmscreen-col-party">
+        <div class="dmscreen-col-header">
+          <span class="section-title" style="margin:0;">Party</span>
+          <span class="footer-line" style="margin:0;" id="dm-party-count"></span>
+        </div>
+        <div class="dm-party-grid" id="dm-party-list"></div>
+      </section>
+
+      <section class="dmscreen-col dmscreen-col-treasure">
+        <div class="dmscreen-col-header">
+          <span class="section-title" style="margin:0;">Loot Containers</span>
+          <button class="btn" id="btn-dm-loot-add" title="New loot container">+ New</button>
+        </div>
+        <div class="loot-container-list" id="dm-loot-list"></div>
+      </section>
+
+      <section class="dmscreen-col dmscreen-col-notes">
+        <div class="dmscreen-col-header">
+          <span class="section-title" style="margin:0;">DM Notes</span>
+        </div>
+        <textarea class="dmscreen-notes-textarea" id="dm-notes-textarea" placeholder="Keep track of anything — plot threads, NPC names, loot, whatever..."></textarea>
+      </section>
+    </div>
+
+    <section class="dmscreen-monsters">
+      <div class="dmscreen-col-header">
+        <span class="section-title" style="margin:0;">Monsters &amp; NPCs</span>
+        <span class="footer-line" style="margin:0;" id="dm-statblock-count"></span>
+      </div>
+      <div class="dm-statblock-import">
+        <textarea id="dm-statblock-import-text" placeholder="Paste a stat block here (e.g. copied from 5etools) to import it..."></textarea>
+        <div class="dm-statblock-import-actions">
+          <button class="btn" id="btn-dm-statblock-import">Import Stat Block</button>
+          <button class="btn" id="btn-dm-statblock-add-blank">+ Add Blank</button>
+        </div>
+      </div>
+      <div class="dm-statblock-grid" id="dm-statblock-list"></div>
+    </section>
+    </div>
+
+    <div class="dmscreen-view" id="dmscreen-view-battlemap" style="display:none;">
+      <section class="dmscreen-battlemap dmscreen-battlemap-full">
+        <div class="dmscreen-col-header battlemap-toolbar">
+          <span class="section-title" style="margin:0;">Battle Map</span>
+          <div class="battlemap-grid-controls">
+            <label class="btn" style="cursor:pointer;">Upload Map<input type="file" id="battlemap-upload-input" accept="image/*" style="display:none;"></label>
+            <label class="battlemap-grid-label">Cols <input type="number" id="battlemap-cols-input" min="1" max="100" value="20"></label>
+            <label class="battlemap-grid-label">Rows <input type="number" id="battlemap-rows-input" min="1" max="100" value="15"></label>
+          </div>
+          <div class="campaign-chip-row" id="battlemap-add-pc-row"></div>
+          <div class="battlemap-kind-toggle">
+            <button type="button" class="battlemap-kind-btn battlemap-kind-active" data-kind="enemy">Enemy</button>
+            <button type="button" class="battlemap-kind-btn" data-kind="npc">NPC</button>
+          </div>
+          <select id="battlemap-monster-select"><option value="">+ Add monster token…</option></select>
+          <select id="battlemap-summon-select"><option value="">+ Add summon token…</option></select>
+          <div class="battlemap-kind-toggle">
+            <button type="button" class="battlemap-tool-btn battlemap-tool-active" data-tool="pan" title="Pan &amp; select">Pan</button>
+            <button type="button" class="battlemap-tool-btn" data-tool="ruler" title="Measure distance">Ruler</button>
+            <button type="button" class="battlemap-tool-btn" data-tool="circle" title="Radius template">Circle</button>
+            <button type="button" class="battlemap-tool-btn" data-tool="cone" title="Cone template">Cone</button>
+            <button type="button" class="battlemap-tool-btn" data-tool="mark" title="Mark a tile with a cross">Mark</button>
+            <button type="button" class="battlemap-tool-btn" data-tool="ping" title="Ping a tile to draw attention">Ping</button>
+          </div>
+          <button type="button" class="btn" id="btn-battlemap-clear-shapes" title="Remove all rulers/circles/cones">Clear Shapes</button>
+        </div>
+        <div class="battle-map-viewport battle-map-viewport-full" id="battle-map-viewport">
+          <div class="battle-map-world" id="battle-map-world">
+            <img class="battle-map-image" id="battle-map-image" alt="" draggable="false">
+            <div class="battle-map-grid-overlay" id="battle-map-grid-overlay"></div>
+            <div id="battle-map-tokens"></div>
+            <svg class="battle-map-shapes-svg" id="battle-map-shapes-svg"></svg>
+          </div>
+          <div class="battle-map-empty-hint" id="battle-map-empty-hint">Upload a map to get started.</div>
+          <div class="battle-map-zoom-controls">
+            <button type="button" class="btn" id="btn-battlemap-zoom-in" title="Zoom in">+</button>
+            <button type="button" class="btn" id="btn-battlemap-zoom-out" title="Zoom out">&minus;</button>
+            <button type="button" class="btn" id="btn-battlemap-zoom-reset" title="Fit to view">&#8862;</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="app.js"></script>
+<script src="dm.js"></script>
+</body>
+</html>

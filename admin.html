@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="theme.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Admin</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="home-body">
+<div id="admin-app" class="admin-app">
+  <div class="home-hero" style="margin-bottom:var(--sp-4);">
+    <div class="home-title" style="font-size:24px;">Server Admin</div>
+    <div class="home-subtitle">Local-machine-only controls — not reachable from other devices on the network.</div>
+  </div>
+
+  <div class="panel" id="admin-blocked" style="display:none;">
+    <div class="section-title">Not Available</div>
+    <div class="footer-line">This page only works when opened on the same machine that's running the server (localhost). Open it there instead.</div>
+  </div>
+
+  <div class="panel" id="admin-content" style="display:none;">
+    <div class="panel-header-row" style="margin-bottom:var(--sp-3);">
+      <div class="section-title" style="margin:0;">Campaigns &amp; DM Passwords</div>
+      <button class="btn" id="btn-admin-refresh">Refresh</button>
+    </div>
+    <div id="admin-campaign-list"></div>
+  </div>
+
+  <a class="home-admin-link" href="index.html">&larr; Back to Home</a>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>

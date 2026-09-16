@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="theme.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D&D Character Ledger</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="home-body">
+<div id="home-app">
+  <div class="home-hero">
+    <div class="home-title">D&D Character Ledger</div>
+    <div class="home-subtitle">Who's playing tonight?</div>
+  </div>
+
+  <div class="home-options" id="home-options">
+    <button class="home-option-btn" data-option="new">
+      <div class="home-option-title">New Player</div>
+      <div class="home-option-desc">Create your first character</div>
+    </button>
+    <button class="home-option-btn" data-option="existing">
+      <div class="home-option-title">Existing Player</div>
+      <div class="home-option-desc">Pick up where you left off</div>
+    </button>
+    <button class="home-option-btn" data-option="dm">
+      <div class="home-option-title">Dungeon Master</div>
+      <div class="home-option-desc">Log into a campaign's DM Screen</div>
+    </button>
+  </div>
+
+  <button type="button" class="theme-toggle-btn" id="btn-theme-toggle">🎨 Theme</button>
+  <div class="theme-popover" id="theme-popover" style="display:none;">
+    <div class="theme-popover-section">
+      <div class="theme-popover-label">Theme</div>
+      <div class="theme-options-vertical" id="theme-swatches"></div>
+    </div>
+    <div class="theme-popover-section">
+      <div class="theme-popover-label">Shape</div>
+      <div class="shape-options-vertical" id="shape-swatches"></div>
+    </div>
+  </div>
+
+  <div class="panel home-panel" id="panel-new" style="display:none;">
+    <div class="section-title">New Player</div>
+    <div class="wizard-field">
+      <label>Your Name</label>
+      <input type="text" id="new-player-name" placeholder="e.g. David">
+    </div>
+    <div class="wizard-method-toggle">
+      <button class="btn wizard-method-active" id="btn-new-mode-wizard">Guided Creator</button>
+      <button class="btn" id="btn-new-mode-manual">Manual (Blank Sheet)</button>
+    </div>
+    <div class="roster-toolbar">
+      <button class="btn" id="btn-new-continue">Continue</button>
+      <button class="btn" id="btn-new-back">Back</button>
+    </div>
+    <div class="footer-line" id="new-player-error"></div>
+  </div>
+
+  <div class="panel home-panel" id="panel-existing" style="display:none;">
+    <div class="section-title">Existing Player</div>
+    <div class="wizard-field">
+      <label>Who are you?</label>
+      <select id="existing-player-select"><option value="">— choose —</option></select>
+    </div>
+    <div class="wizard-field">
+      <label>Character</label>
+      <select id="existing-character-select" disabled><option value="">— choose a player first —</option></select>
+    </div>
+    <div class="roster-toolbar">
+      <button class="btn" id="btn-existing-go">Go</button>
+      <button class="btn" id="btn-existing-back">Back</button>
+    </div>
+    <div class="footer-line" id="existing-player-error"></div>
+  </div>
+
+  <div class="panel home-panel" id="panel-dm" style="display:none;">
+    <div class="section-title">Dungeon Master</div>
+    <div class="wizard-field">
+      <label>Campaign</label>
+      <select id="dm-campaign-select">
+        <option value="">— choose —</option>
+        <option value="__create__">+ Create New Campaign</option>
+      </select>
+    </div>
+    <div class="wizard-field" id="dm-new-campaign-field" style="display:none;">
+      <label>New Campaign Name</label>
+      <input type="text" id="dm-new-campaign-name" placeholder="e.g. Tuesday Group">
+      <div class="roster-toolbar">
+        <button class="btn" id="btn-dm-create-campaign">Create</button>
+        <button class="btn" id="btn-dm-cancel-create">Cancel</button>
+      </div>
+    </div>
+    <div class="wizard-field" id="dm-home-password-field" style="display:none;">
+      <label id="dm-home-password-label">Enter Password</label>
+      <input type="password" id="dm-home-password-input" placeholder="Password">
+    </div>
+    <div class="roster-toolbar">
+      <button class="btn" id="btn-dm-continue">Continue</button>
+      <button class="btn" id="btn-dm-back">Back</button>
+    </div>
+    <div class="footer-line" id="dm-home-error"></div>
+  </div>
+
+  <a class="home-admin-link" href="admin.html">Server Admin</a>
+</div>
+
+<script src="home.js"></script>
+</body>
+</html>

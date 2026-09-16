@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+
+# Generated runtime data (per-player characters, campaigns, DM screen data)
+characters/
+trash/
+campaigns/
+campaigns-registry.json
+dm-auth/
+dm-auth.json
+dm-notes/
+dm-statblocks/
+dm-treasure/
+inbox/
+character-data.json
