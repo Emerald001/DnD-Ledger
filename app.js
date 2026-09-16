@@ -1258,7 +1258,7 @@ function resetInitiativeTracker(){
 
 var pcBoardMap = {image:"", gridCols:20, gridRows:15};
 var pcBoardTokens = [];
-var pcBoardTokensPollGeneration = 0;
+var pcBoardStatePollGeneration = 0;
 var pcLastKnownBoardTokensUpdatedAt = 0;
 var pcBoardDragTokenId = null;
 var pcBoardCampaignSlug = null;
@@ -1303,7 +1303,6 @@ function pcResetBoardView(){
 
 var pcActiveTool = "pan";
 var pcShapes = [];
-var pcShapesPollGeneration = 0;
 var pcLastKnownShapesUpdatedAt = 0;
 var pcDraftShape = null;
 
@@ -1464,52 +1463,6 @@ function pcDeleteBoardShapeRemote(id){
   }).catch(function(){});
 }
 
-function pcLoadBoardShapes(slug){
-  pcShapesPollGeneration++;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-shapes", {cache:"no-store"}).then(function(r){
-    pcLastKnownShapesUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
-    return r.json();
-  }).then(function(data){
-    pcShapes = (data && Array.isArray(data.shapes)) ? data.shapes : [];
-    renderPcBoardShapes();
-    pcShapesPollNext(pcShapesPollGeneration, slug);
-  }).catch(function(){
-    pcShapes = [];
-    renderPcBoardShapes();
-  });
-}
-
-function pcShapesPollNext(generation, slug){
-  if(generation!==pcShapesPollGeneration || slug!==pcBoardCampaignSlug) return;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-shapes/wait?since="+pcLastKnownShapesUpdatedAt, {cache:"no-store"})
-    .then(function(resp){
-      if(generation!==pcShapesPollGeneration) return null;
-      var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
-      if(resp.status===200){
-        return resp.json().then(function(data){
-          return {data:data, updatedAt: isNaN(updatedHeader)?pcLastKnownShapesUpdatedAt:updatedHeader};
-        });
-      }
-      if(!isNaN(updatedHeader)){ pcLastKnownShapesUpdatedAt = updatedHeader; }
-      return null;
-    })
-    .then(function(result){
-      if(generation!==pcShapesPollGeneration) return;
-      if(result && !pcDraftShape){
-        pcShapes = (result.data && Array.isArray(result.data.shapes)) ? result.data.shapes : pcShapes;
-        pcLastKnownShapesUpdatedAt = result.updatedAt;
-        renderPcBoardShapes();
-      } else if(result){
-        pcLastKnownShapesUpdatedAt = result.updatedAt;
-      }
-      pcShapesPollNext(generation, slug);
-    })
-    .catch(function(){
-      if(generation!==pcShapesPollGeneration) return;
-      setTimeout(function(){ pcShapesPollNext(generation, slug); }, 3000);
-    });
-}
-
 function pcSetupBoardViewportInteractions(){
   var viewport = document.getElementById("pc-battle-map-viewport");
   if(!viewport || viewport.dataset.wired) return;
@@ -1592,7 +1545,8 @@ function pcSetupBoardViewportInteractions(){
 }
 
 function initBattleMap(){
-  pcBoardTokensPollGeneration++;
+  pcBoardStatePollGeneration++;
+  var generation = pcBoardStatePollGeneration;
   var slug = campaignSlug(state.meta.campaign);
   pcBoardCampaignSlug = slug || null;
   if(!slug){
@@ -1609,18 +1563,29 @@ function initBattleMap(){
     };
     renderPcBoardMap();
   }).catch(function(){ renderPcBoardMap(); });
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-tokens", {cache:"no-store"}).then(function(r){
+  var tokensLoaded = fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-tokens", {cache:"no-store"}).then(function(r){
     pcLastKnownBoardTokensUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
     return r.json();
   }).then(function(data){
     pcBoardTokens = (data && Array.isArray(data.tokens)) ? data.tokens : [];
     renderPcBoardTokens();
-    pcBoardTokensPollNext(pcBoardTokensPollGeneration, slug);
   }).catch(function(){
     pcBoardTokens = [];
     renderPcBoardTokens();
   });
-  pcLoadBoardShapes(slug);
+  var shapesLoaded = fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-shapes", {cache:"no-store"}).then(function(r){
+    pcLastKnownShapesUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
+    return r.json();
+  }).then(function(data){
+    pcShapes = (data && Array.isArray(data.shapes)) ? data.shapes : [];
+    renderPcBoardShapes();
+  }).catch(function(){
+    pcShapes = [];
+    renderPcBoardShapes();
+  });
+  Promise.all([tokensLoaded, shapesLoaded]).then(function(){
+    pcBoardStatePollNext(generation, slug);
+  });
 }
 
 function renderPcBoardMap(){
@@ -1768,34 +1733,34 @@ function savePcBoardTokens(){
   }).catch(function(){});
 }
 
-function pcBoardTokensPollNext(generation, slug){
-  if(generation!==pcBoardTokensPollGeneration || slug!==pcBoardCampaignSlug) return;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-tokens/wait?since="+pcLastKnownBoardTokensUpdatedAt, {cache:"no-store"})
+function pcBoardStatePollNext(generation, slug){
+  if(generation!==pcBoardStatePollGeneration || slug!==pcBoardCampaignSlug) return;
+  var since = Math.max(pcLastKnownBoardTokensUpdatedAt, pcLastKnownShapesUpdatedAt);
+  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-state/wait?since="+since, {cache:"no-store"})
     .then(function(resp){
-      if(generation!==pcBoardTokensPollGeneration) return null;
-      var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
-      if(resp.status===200){
-        return resp.json().then(function(data){
-          return {data:data, updatedAt: isNaN(updatedHeader)?pcLastKnownBoardTokensUpdatedAt:updatedHeader};
-        });
-      }
-      if(!isNaN(updatedHeader)){ pcLastKnownBoardTokensUpdatedAt = updatedHeader; }
+      if(generation!==pcBoardStatePollGeneration) return null;
+      if(resp.status===200){ return resp.json(); }
       return null;
     })
-    .then(function(result){
-      if(generation!==pcBoardTokensPollGeneration) return;
-      if(result && pcBoardDragTokenId===null){
-        pcBoardTokens = (result.data && Array.isArray(result.data.tokens)) ? result.data.tokens : pcBoardTokens;
-        pcLastKnownBoardTokensUpdatedAt = result.updatedAt;
-        renderPcBoardTokens();
-      } else if(result){
-        pcLastKnownBoardTokensUpdatedAt = result.updatedAt;
+    .then(function(data){
+      if(generation!==pcBoardStatePollGeneration) return;
+      if(data){
+        if(pcBoardDragTokenId===null){
+          pcBoardTokens = Array.isArray(data.tokens) ? data.tokens : pcBoardTokens;
+          renderPcBoardTokens();
+        }
+        pcLastKnownBoardTokensUpdatedAt = Number(data.tokensUpdatedAt)||pcLastKnownBoardTokensUpdatedAt;
+        if(!pcDraftShape){
+          pcShapes = Array.isArray(data.shapes) ? data.shapes : pcShapes;
+          renderPcBoardShapes();
+        }
+        pcLastKnownShapesUpdatedAt = Number(data.shapesUpdatedAt)||pcLastKnownShapesUpdatedAt;
       }
-      pcBoardTokensPollNext(generation, slug);
+      pcBoardStatePollNext(generation, slug);
     })
     .catch(function(){
-      if(generation!==pcBoardTokensPollGeneration) return;
-      setTimeout(function(){ pcBoardTokensPollNext(generation, slug); }, 3000);
+      if(generation!==pcBoardStatePollGeneration) return;
+      setTimeout(function(){ pcBoardStatePollNext(generation, slug); }, 3000);
     });
 }
 

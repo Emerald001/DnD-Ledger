@@ -28,7 +28,7 @@ CAMPAIGNS_REGISTRY_FILE = os.path.join(BASE_DIR, "campaigns-registry.json")
 LEGACY_FILE = os.path.join(BASE_DIR, "character-data.json")
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 CAMPAIGN_SLUG_RE = re.compile(r"^[a-z0-9-]{1,64}$")
-WAIT_TIMEOUT = 55
+WAIT_TIMEOUT = 20
 POLL_INTERVAL = 0.5
 LOOPBACK_ADDRS = ("127.0.0.1", "::1")
 
@@ -174,6 +174,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path.startswith("/api/campaign/") and path.endswith("/board-map"):
             slug = path[len("/api/campaign/"):-len("/board-map")]
             self.handle_get_board_map(slug)
+            return
+        if path.startswith("/api/campaign/") and path.endswith("/board-state/wait"):
+            slug = path[len("/api/campaign/"):-len("/board-state/wait")]
+            query = parse_qs(parsed.query)
+            since = 0.0
+            if "since" in query:
+                try:
+                    since = float(query["since"][0])
+                except Exception:
+                    since = 0.0
+            self.handle_wait_board_state(slug, since)
             return
         if path.startswith("/api/campaign/") and path.endswith("/board-tokens/wait"):
             slug = path[len("/api/campaign/"):-len("/board-tokens/wait")]
@@ -558,6 +569,47 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.write_raw_json(200, body, updated_at=os.path.getmtime(path))
         else:
             self.write_raw_json(200, json.dumps({"tokens": []}), updated_at=0)
+
+    def handle_wait_board_state(self, slug, since):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        tokens_path = dm_board_tokens_path(slug)
+        shapes_path = dm_board_shapes_path(slug)
+        deadline = time.time() + WAIT_TIMEOUT
+        while True:
+            t_mtime = os.path.getmtime(tokens_path) if os.path.exists(tokens_path) else 0
+            s_mtime = os.path.getmtime(shapes_path) if os.path.exists(shapes_path) else 0
+            mtime = max(t_mtime, s_mtime)
+            if mtime > since:
+                if os.path.exists(tokens_path):
+                    with open(tokens_path, "r", encoding="utf-8") as f:
+                        tokens_data = json.load(f)
+                else:
+                    tokens_data = {"tokens": []}
+                if os.path.exists(shapes_path):
+                    with open(shapes_path, "r", encoding="utf-8") as f:
+                        shapes_data = json.load(f)
+                else:
+                    shapes_data = {"shapes": []}
+                combined = {
+                    "tokens": tokens_data.get("tokens", []),
+                    "shapes": shapes_data.get("shapes", []),
+                    "tokensUpdatedAt": t_mtime,
+                    "shapesUpdatedAt": s_mtime,
+                }
+                self.write_raw_json(200, json.dumps(combined), updated_at=mtime)
+                return
+            if time.time() >= deadline:
+                try:
+                    self.send_response(204)
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Updated-At", str(mtime))
+                    self.end_headers()
+                except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError, OSError):
+                    pass
+                return
+            time.sleep(POLL_INTERVAL)
 
     def handle_wait_board_tokens(self, slug, since):
         if not CAMPAIGN_SLUG_RE.match(slug):
@@ -1146,8 +1198,34 @@ def local_ip():
     return ip
 
 
+SINGLE_INSTANCE_LOCK_PORT = 47632
+_single_instance_lock_socket = None
+
+
+def acquire_single_instance_lock():
+    global _single_instance_lock_socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", SINGLE_INSTANCE_LOCK_PORT))
+        sock.listen(1)
+    except OSError:
+        sock.close()
+        return False
+    # Keep this socket open (and referenced) for the life of the process.
+    # The OS releases it automatically on exit, however the process ends
+    # (Ctrl+C, closed terminal, Task Manager kill) - unlike a PID file,
+    # this can never go stale.
+    _single_instance_lock_socket = sock
+    return True
+
+
 def main():
     os.chdir(BASE_DIR)
+    if not acquire_single_instance_lock():
+        print("Another instance of this server already appears to be running.")
+        print("Stop it first (Ctrl+C in its window, or end its python.exe process")
+        print("in Task Manager) before starting a new one.")
+        sys.exit(1)
     migrate_legacy_file()
     load_persisted_dm_tokens()
     server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)

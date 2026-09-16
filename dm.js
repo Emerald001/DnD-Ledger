@@ -457,7 +457,7 @@ function dmLoadTreasure(slug){
 
 var dmBoardMap = {image:"", gridCols:20, gridRows:15};
 var dmBoardTokens = [];
-var dmBoardTokensPollGeneration = 0;
+var dmBoardStatePollGeneration = 0;
 var dmLastKnownBoardTokensUpdatedAt = 0;
 var dmBoardDragTokenId = null;
 var dmBoardNaturalW = 0;
@@ -512,7 +512,6 @@ function dmSwitchView(view){
 
 var dmActiveTool = "pan";
 var dmShapes = [];
-var dmShapesPollGeneration = 0;
 var dmLastKnownShapesUpdatedAt = 0;
 var dmDraftShape = null;
 
@@ -667,52 +666,6 @@ function dmDeleteBoardShapeRemote(id){
   }).then(function(r){ return r.json(); }).then(function(res){
     if(res && res.updatedAt){ dmLastKnownShapesUpdatedAt = res.updatedAt; }
   }).catch(function(){});
-}
-
-function dmLoadBoardShapes(slug){
-  dmShapesPollGeneration++;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-shapes", {cache:"no-store"}).then(function(r){
-    dmLastKnownShapesUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
-    return r.json();
-  }).then(function(data){
-    dmShapes = (data && Array.isArray(data.shapes)) ? data.shapes : [];
-    dmRenderBoardShapes();
-    dmShapesPollNext(dmShapesPollGeneration, slug);
-  }).catch(function(){
-    dmShapes = [];
-    dmRenderBoardShapes();
-  });
-}
-
-function dmShapesPollNext(generation, slug){
-  if(generation!==dmShapesPollGeneration || slug!==dmCampaignSlug) return;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-shapes/wait?since="+dmLastKnownShapesUpdatedAt, {cache:"no-store"})
-    .then(function(resp){
-      if(generation!==dmShapesPollGeneration) return null;
-      var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
-      if(resp.status===200){
-        return resp.json().then(function(data){
-          return {data:data, updatedAt: isNaN(updatedHeader)?dmLastKnownShapesUpdatedAt:updatedHeader};
-        });
-      }
-      if(!isNaN(updatedHeader)){ dmLastKnownShapesUpdatedAt = updatedHeader; }
-      return null;
-    })
-    .then(function(result){
-      if(generation!==dmShapesPollGeneration) return;
-      if(result && !dmDraftShape){
-        dmShapes = (result.data && Array.isArray(result.data.shapes)) ? result.data.shapes : dmShapes;
-        dmLastKnownShapesUpdatedAt = result.updatedAt;
-        dmRenderBoardShapes();
-      } else if(result){
-        dmLastKnownShapesUpdatedAt = result.updatedAt;
-      }
-      dmShapesPollNext(generation, slug);
-    })
-    .catch(function(){
-      if(generation!==dmShapesPollGeneration) return;
-      setTimeout(function(){ dmShapesPollNext(generation, slug); }, 3000);
-    });
 }
 
 function dmSetupBoardViewportInteractions(){
@@ -1071,54 +1024,63 @@ function dmSaveBoardTokens(){
 }
 
 function dmLoadBoardTokens(slug){
-  dmBoardTokensPollGeneration++;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-tokens", {cache:"no-store"}).then(function(r){
+  dmBoardStatePollGeneration++;
+  var generation = dmBoardStatePollGeneration;
+  var tokensLoaded = fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-tokens", {cache:"no-store"}).then(function(r){
     dmLastKnownBoardTokensUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
     return r.json();
   }).then(function(data){
     dmBoardTokens = (data && Array.isArray(data.tokens)) ? data.tokens : [];
     dmRenderBoardTokens();
     dmRenderBattleMapAddRow();
-    dmStartBoardTokensPolling(slug);
   }).catch(function(){
     dmBoardTokens = [];
     dmRenderBoardTokens();
   });
+  var shapesLoaded = fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-shapes", {cache:"no-store"}).then(function(r){
+    dmLastKnownShapesUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
+    return r.json();
+  }).then(function(data){
+    dmShapes = (data && Array.isArray(data.shapes)) ? data.shapes : [];
+    dmRenderBoardShapes();
+  }).catch(function(){
+    dmShapes = [];
+    dmRenderBoardShapes();
+  });
+  Promise.all([tokensLoaded, shapesLoaded]).then(function(){
+    dmBoardStatePollNext(generation, slug);
+  });
 }
 
-function dmStartBoardTokensPolling(slug){
-  dmBoardTokensPollNext(dmBoardTokensPollGeneration, slug);
-}
-
-function dmBoardTokensPollNext(generation, slug){
-  if(generation!==dmBoardTokensPollGeneration || slug!==dmCampaignSlug) return;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-tokens/wait?since="+dmLastKnownBoardTokensUpdatedAt, {cache:"no-store"})
+function dmBoardStatePollNext(generation, slug){
+  if(generation!==dmBoardStatePollGeneration || slug!==dmCampaignSlug) return;
+  var since = Math.max(dmLastKnownBoardTokensUpdatedAt, dmLastKnownShapesUpdatedAt);
+  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-state/wait?since="+since, {cache:"no-store"})
     .then(function(resp){
-      if(generation!==dmBoardTokensPollGeneration) return null;
-      var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
-      if(resp.status===200){
-        return resp.json().then(function(data){
-          return {data:data, updatedAt: isNaN(updatedHeader)?dmLastKnownBoardTokensUpdatedAt:updatedHeader};
-        });
-      }
-      if(!isNaN(updatedHeader)){ dmLastKnownBoardTokensUpdatedAt = updatedHeader; }
+      if(generation!==dmBoardStatePollGeneration) return null;
+      if(resp.status===200){ return resp.json(); }
       return null;
     })
-    .then(function(result){
-      if(generation!==dmBoardTokensPollGeneration) return;
-      if(result && dmBoardDragTokenId===null){
-        dmBoardTokens = (result.data && Array.isArray(result.data.tokens)) ? result.data.tokens : dmBoardTokens;
-        dmLastKnownBoardTokensUpdatedAt = result.updatedAt;
-        dmRenderBoardTokens();
-        dmRenderBattleMapAddRow();
-      } else if(result){
-        dmLastKnownBoardTokensUpdatedAt = result.updatedAt;
+    .then(function(data){
+      if(generation!==dmBoardStatePollGeneration) return;
+      if(data){
+        if(dmBoardDragTokenId===null){
+          dmBoardTokens = Array.isArray(data.tokens) ? data.tokens : dmBoardTokens;
+          dmRenderBoardTokens();
+          dmRenderBattleMapAddRow();
+        }
+        dmLastKnownBoardTokensUpdatedAt = Number(data.tokensUpdatedAt)||dmLastKnownBoardTokensUpdatedAt;
+        if(!dmDraftShape){
+          dmShapes = Array.isArray(data.shapes) ? data.shapes : dmShapes;
+          dmRenderBoardShapes();
+        }
+        dmLastKnownShapesUpdatedAt = Number(data.shapesUpdatedAt)||dmLastKnownShapesUpdatedAt;
       }
-      dmBoardTokensPollNext(generation, slug);
+      dmBoardStatePollNext(generation, slug);
     })
     .catch(function(){
-      if(generation!==dmBoardTokensPollGeneration) return;
-      setTimeout(function(){ dmBoardTokensPollNext(generation, slug); }, 3000);
+      if(generation!==dmBoardStatePollGeneration) return;
+      setTimeout(function(){ dmBoardStatePollNext(generation, slug); }, 3000);
     });
 }
 
@@ -1470,7 +1432,6 @@ function dmInit(){
   dmLoadStatblocks(dmCampaignSlug);
   dmLoadBoardMap(dmCampaignSlug);
   dmLoadBoardTokens(dmCampaignSlug);
-  dmLoadBoardShapes(dmCampaignSlug);
 }
 
 document.addEventListener("DOMContentLoaded", dmInit);
