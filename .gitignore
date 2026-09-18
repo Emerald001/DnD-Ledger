@@ -11,5 +11,8 @@ dm-auth.json
 dm-notes/
 dm-statblocks/
 dm-treasure/
+dm-board-map/
+dm-board-shapes/
+dm-board-tokens/
 inbox/
 character-data.json

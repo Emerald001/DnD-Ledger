@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="theme.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle Map</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="dmscreen">
+  <header class="dmscreen-topbar">
+    <div>
+      <div class="dmscreen-title display" id="map-campaign-title">Battle Map</div>
+      <div class="dmscreen-subtitle">Table View — read only</div>
+    </div>
+    <a class="btn" href="index.html">&larr; Back</a>
+  </header>
+
+  <main class="dmscreen-body">
+    <div class="dmscreen-view">
+      <section class="dmscreen-battlemap dmscreen-battlemap-full">
+        <div class="battle-map-viewport battle-map-viewport-full" id="battle-map-viewport">
+          <div class="battle-map-world" id="battle-map-world">
+            <img class="battle-map-image" id="battle-map-image" alt="" draggable="false">
+            <div class="battle-map-grid-overlay" id="battle-map-grid-overlay"></div>
+            <div id="battle-map-tokens"></div>
+            <svg class="battle-map-shapes-svg" id="battle-map-shapes-svg"></svg>
+          </div>
+          <div class="battle-map-empty-hint" id="battle-map-empty-hint">No map has been uploaded for this campaign yet.</div>
+          <div class="battle-map-zoom-controls">
+            <button type="button" class="btn" id="btn-map-zoom-in" title="Zoom in">+</button>
+            <button type="button" class="btn" id="btn-map-zoom-out" title="Zoom out">&minus;</button>
+            <button type="button" class="btn" id="btn-map-zoom-reset" title="Fit to view">&#8862;</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="map.js"></script>
+</body>
+</html>

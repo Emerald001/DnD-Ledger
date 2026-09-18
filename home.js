@@ -71,15 +71,36 @@ function populateDmCampaignSelect(){
     '<option value="__create__">+ Create New Campaign</option>';
 }
 
+function populateMapCampaignSelect(){
+  var sel = document.getElementById("map-campaign-select");
+  var sorted = homeCampaigns.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+  sel.innerHTML = '<option value="">— choose —</option>' +
+    sorted.map(function(c){ return '<option value="'+esc(c.slug)+'">'+esc(c.name)+'</option>'; }).join("");
+}
+
+function goViewMap(){
+  var slug = document.getElementById("map-campaign-select").value;
+  var errEl = document.getElementById("map-home-error");
+  if(!slug){ errEl.textContent = "Choose a campaign."; return; }
+  errEl.textContent = "";
+  location.href = "map.html?campaign="+encodeURIComponent(slug);
+}
+
 function onDmCampaignChange(){
   var sel = document.getElementById("dm-campaign-select");
   var errEl = document.getElementById("dm-home-error");
   errEl.textContent = "";
   if(sel.value==="__create__"){
     showCreateCampaignForm();
+    hideDmPasswordField();
     return;
   }
   hideCreateCampaignForm();
+  if(!sel.value){
+    hideDmPasswordField();
+    return;
+  }
+  showDmPasswordField(sel.value);
 }
 
 function showCreateCampaignForm(){
@@ -109,6 +130,7 @@ function createNewCampaign(){
         hideCreateCampaignForm();
         if(campaign){
           document.getElementById("dm-campaign-select").value = campaign.slug;
+          showDmPasswordField(campaign.slug);
         }
       });
     }).catch(function(){
@@ -181,26 +203,30 @@ function goExistingPlayer(){
   location.href = "character-ledger.html?open="+encodeURIComponent(charId)+"&player="+encodeURIComponent(player);
 }
 
-function dmCampaignContinue(){
-  var passwordField = document.getElementById("dm-home-password-field");
-  if(passwordField.style.display==="block"){
-    dmSubmitHomeLogin();
-    return;
-  }
-  var slug = document.getElementById("dm-campaign-select").value;
-  var errEl = document.getElementById("dm-home-error");
-  if(!slug || slug==="__create__"){ errEl.textContent = "Choose or create a campaign."; return; }
-  errEl.textContent = "";
+function hideDmPasswordField(){
+  dmHomeSlug = null;
+  dmHomeHasPassword = false;
+  document.getElementById("dm-home-password-field").style.display = "none";
+  document.getElementById("dm-home-password-input").value = "";
+}
+
+function showDmPasswordField(slug){
   dmHomeSlug = slug;
+  var errEl = document.getElementById("dm-home-error");
+  var passwordField = document.getElementById("dm-home-password-field");
   var passwordInput = document.getElementById("dm-home-password-input");
   var continueBtn = document.getElementById("btn-dm-continue");
+  errEl.textContent = "";
+  passwordInput.value = "";
   fetch("/api/dm/"+encodeURIComponent(slug)+"/status", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(res){
+    if(dmHomeSlug!==slug) return;
     dmHomeHasPassword = !!res.hasPassword;
     document.getElementById("dm-home-password-label").textContent = dmHomeHasPassword ? "Enter Password" : "Set a DM Password (first-time setup)";
     passwordField.style.display = "block";
     continueBtn.textContent = dmHomeHasPassword ? "Log In" : "Set Password";
     passwordInput.focus();
   }).catch(function(){
+    if(dmHomeSlug!==slug) return;
     errEl.textContent = "Could not reach the server.";
   });
 }
@@ -228,7 +254,6 @@ function resetDmHomeForm(){
   hideCreateCampaignForm();
   document.getElementById("dm-home-password-input").value = "";
   document.getElementById("dm-home-password-field").style.display = "none";
-  document.getElementById("btn-dm-continue").textContent = "Continue";
   document.getElementById("dm-home-error").textContent = "";
 }
 
@@ -244,6 +269,7 @@ function init(){
   });
   loadHomeCampaigns().then(function(){
     populateDmCampaignSelect();
+    populateMapCampaignSelect();
   });
 
   document.querySelectorAll(".home-option-btn").forEach(function(btn){
@@ -252,6 +278,8 @@ function init(){
   document.getElementById("btn-new-back").addEventListener("click", backToOptions);
   document.getElementById("btn-existing-back").addEventListener("click", backToOptions);
   document.getElementById("btn-dm-back").addEventListener("click", function(){ resetDmHomeForm(); backToOptions(); });
+  document.getElementById("btn-map-back").addEventListener("click", backToOptions);
+  document.getElementById("btn-map-go").addEventListener("click", goViewMap);
 
   document.getElementById("btn-new-mode-wizard").addEventListener("click", function(){ setNewPlayerMode("wizard"); });
   document.getElementById("btn-new-mode-manual").addEventListener("click", function(){ setNewPlayerMode("manual"); });
@@ -261,11 +289,12 @@ function init(){
   document.getElementById("existing-player-select").addEventListener("change", function(e){ populateExistingCharacterSelect(e.target.value); });
   document.getElementById("btn-existing-go").addEventListener("click", goExistingPlayer);
 
-  document.getElementById("btn-dm-continue").addEventListener("click", dmCampaignContinue);
+  document.getElementById("btn-dm-continue").addEventListener("click", dmSubmitHomeLogin);
   document.getElementById("dm-campaign-select").addEventListener("change", onDmCampaignChange);
   document.getElementById("btn-dm-create-campaign").addEventListener("click", createNewCampaign);
   document.getElementById("btn-dm-cancel-create").addEventListener("click", function(){
     hideCreateCampaignForm();
+    hideDmPasswordField();
     document.getElementById("dm-campaign-select").value = "";
   });
   document.getElementById("dm-new-campaign-name").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); createNewCampaign(); } });

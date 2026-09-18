@@ -27,6 +27,10 @@
       <div class="home-option-title">Dungeon Master</div>
       <div class="home-option-desc">Log into a campaign's DM Screen</div>
     </button>
+    <button class="home-option-btn" data-option="map">
+      <div class="home-option-title">View Map</div>
+      <div class="home-option-desc">Show the battle map on the table</div>
+    </button>
   </div>
 
   <button type="button" class="theme-toggle-btn" id="btn-theme-toggle">🎨 Theme</button>
@@ -95,12 +99,27 @@
     <div class="wizard-field" id="dm-home-password-field" style="display:none;">
       <label id="dm-home-password-label">Enter Password</label>
       <input type="password" id="dm-home-password-input" placeholder="Password">
+      <div class="roster-toolbar">
+        <button class="btn" id="btn-dm-continue">Log In</button>
+      </div>
     </div>
     <div class="roster-toolbar">
-      <button class="btn" id="btn-dm-continue">Continue</button>
       <button class="btn" id="btn-dm-back">Back</button>
     </div>
     <div class="footer-line" id="dm-home-error"></div>
+  </div>
+
+  <div class="panel home-panel" id="panel-map" style="display:none;">
+    <div class="section-title">View Map</div>
+    <div class="wizard-field">
+      <label>Campaign</label>
+      <select id="map-campaign-select"><option value="">— choose —</option></select>
+    </div>
+    <div class="roster-toolbar">
+      <button class="btn" id="btn-map-go">View Map</button>
+      <button class="btn" id="btn-map-back">Back</button>
+    </div>
+    <div class="footer-line" id="map-home-error"></div>
   </div>
 
   <a class="home-admin-link" href="admin.html">Server Admin</a>
