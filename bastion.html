@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="theme.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bastion</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="dmscreen">
+  <header class="dmscreen-topbar">
+    <div>
+      <div class="dmscreen-title display" id="bas-campaign-title">Bastion</div>
+      <div class="dmscreen-subtitle">Shared with everyone in the campaign — changes sync automatically</div>
+    </div>
+    <a class="btn" href="index.html">&larr; Back</a>
+  </header>
+
+  <main class="dmscreen-body">
+    <div class="dmscreen-view">
+      <div class="bas-layout" id="bas-layout">
+        <div class="bas-main">
+          <div class="dmscreen-col-header bas-toolbar">
+            <input type="text" id="bas-name" class="bas-name-input" placeholder="Bastion name" maxlength="80">
+            <div class="battlemap-kind-toggle" id="bas-tools">
+              <button type="button" class="battlemap-tool-btn battlemap-tool-active" data-tool="select" title="Select, move and resize rooms (V)">Select</button>
+              <button type="button" class="battlemap-tool-btn" data-tool="room" title="Drag to draw a room (R)">Room</button>
+              <button type="button" class="battlemap-tool-btn" data-tool="corridor" title="Drag to paint corridor tiles (C)">Corridor</button>
+              <button type="button" class="battlemap-tool-btn" data-tool="stairs" title="Click a tile to cycle stairs: up / down / both / none (S)">Stairs</button>
+              <button type="button" class="battlemap-tool-btn" data-tool="erase" title="Drag to erase corridor tiles and stairs (E)">Erase</button>
+            </div>
+            <button type="button" class="btn" id="bas-undo" title="Undo (Ctrl+Z)">Undo</button>
+            <div class="battlemap-grid-controls">
+              <label class="battlemap-grid-label">Cols <input type="number" id="bas-cols" min="10" max="100"></label>
+              <label class="battlemap-grid-label">Rows <input type="number" id="bas-rows" min="10" max="100"></label>
+              <button type="button" class="btn" id="bas-zoom-out" title="Zoom out">&minus;</button>
+              <button type="button" class="btn" id="bas-zoom-in" title="Zoom in">+</button>
+            </div>
+            <span class="footer-line" id="bas-status" style="margin:0;"></span>
+          </div>
+          <div class="bas-floors" id="bas-floors"></div>
+          <div class="bas-canvas" id="bas-canvas"><svg id="bas-svg"></svg></div>
+        </div>
+        <aside class="bas-panel" id="bas-panel"></aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="bastion.js"></script>
+</body>
+</html>

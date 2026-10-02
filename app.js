@@ -33,7 +33,8 @@ var SETTINGS_DEFS = [
   ["portraitBackground","Portrait Background","Shows the character's portrait faintly behind the name and stats. Turn off for a plain background."],
   ["effects","Effects Engine","Structured feats, traits, class features, and per-item mechanical bonuses (AC, abilities, saves, skills, HP, speed, resistances). Turn off to compute the sheet using only manual fields."],
   ["flySpeed","Fly Speed","A Fly Speed field next to your normal Speed, for characters with a flying speed."],
-  ["swimSpeed","Swim Speed","A Swim Speed field next to your normal Speed, for characters with a swimming speed."]
+  ["swimSpeed","Swim Speed","A Swim Speed field next to your normal Speed, for characters with a swimming speed."],
+  ["climbSpeed","Climb Speed","A Climb Speed field next to your normal Speed, for characters with a climbing speed."]
 ];
 var EFFECT_TARGETS = [["ac","Armor Class","Combat"],["hpMax","Max HP","Combat"],["speed","Speed","Combat"],["initiative","Initiative","Combat"]]
   .concat([["spellDC","Spell Save DC","Spellcasting"],["spellAttack","Spell Attack Roll","Spellcasting"]])
@@ -254,10 +255,32 @@ var saveTimer = null;
 var serverAvailable = false;
 var lastKnownUpdatedAt = 0;
 var pollGeneration = 0;
+var pollAbortCtrl = null;
 var initiativeCampaignSlug = null;
 var initiativePollGeneration = 0;
+var initiativeAbortCtrl = null;
 var initiativeServerAvailable = false;
 var lastKnownInitiativeUpdatedAt = 0;
+var backgroundPollsPaused = false;
+
+// The character-sync and initiative long-polls hold a connection open (up to WAIT_TIMEOUT) more or less
+// permanently. Browsers cap same-origin connections at 6, so while a tab that needs several requests of
+// its own is loading (e.g. Bastion, in its iframe), those two held connections can make it queue behind
+// them. Pause both while such a tab is open, and resume when leaving it.
+function pauseBackgroundPolling(){
+  if(backgroundPollsPaused) return;
+  backgroundPollsPaused = true;
+  pollGeneration++;
+  if(pollAbortCtrl){ pollAbortCtrl.abort(); pollAbortCtrl = null; }
+  initiativePollGeneration++;
+  if(initiativeAbortCtrl){ initiativeAbortCtrl.abort(); initiativeAbortCtrl = null; }
+}
+function resumeBackgroundPolling(){
+  if(!backgroundPollsPaused) return;
+  backgroundPollsPaused = false;
+  pollNext(pollGeneration);
+  if(initiativeCampaignSlug) initiativePollNext(initiativePollGeneration);
+}
 var initiativeSaveTimer = null;
 var expandedFeatures = {};
 var expandedEquipment = {};
@@ -289,7 +312,7 @@ function defaultState(){
     abilities:{str:10,dex:10,con:10,int:10,wis:10,cha:10},
     saves:{str:false,dex:false,con:false,int:false,wis:false,cha:false},
     skills:skills,
-    combat:{acBonus:0,initMisc:0,speed:30,speedMod:0,speedModPrev:0,flySpeed:0,flySpeedMod:0,flySpeedModPrev:0,swimSpeed:0,swimSpeedMod:0,swimSpeedModPrev:0,spellDcMisc:0,spellAtkMisc:0,hpMax:10,hpCurrent:10,hpTemp:0,hitDicePools:[{class:"",die:8,total:1,used:0}],deathSuccess:[false,false,false],deathFail:[false,false,false],inspiration:false,exhaustion:0,concentration:{active:false,spell:""},conditions:defaultConditions(),spellEffects:[]},
+    combat:{acBonus:0,initMisc:0,speed:30,speedMod:0,speedModPrev:0,flySpeed:0,flySpeedMod:0,flySpeedModPrev:0,swimSpeed:0,swimSpeedMod:0,swimSpeedModPrev:0,climbSpeed:0,climbSpeedMod:0,climbSpeedModPrev:0,spellDcMisc:0,spellAtkMisc:0,hpMax:10,hpCurrent:10,hpTemp:0,hitDicePools:[{class:"",die:8,total:1,used:0}],deathSuccess:[false,false,false],deathFail:[false,false,false],inspiration:false,exhaustion:0,concentration:{active:false,spell:""},conditions:defaultConditions(),spellEffects:[]},
     attacks:[],
     resources:[],
     currency:{cp:0,sp:0,ep:0,gp:0,pp:0},
@@ -444,7 +467,8 @@ function checkInbox(){
 
 function pollNext(generation){
   if(generation !== pollGeneration) return;
-  fetch("/api/character/"+encodeURIComponent(currentId)+"/wait?since="+lastKnownUpdatedAt, {cache:"no-store"})
+  pollAbortCtrl = new AbortController();
+  fetch("/api/character/"+encodeURIComponent(currentId)+"/wait?since="+lastKnownUpdatedAt, {cache:"no-store", signal:pollAbortCtrl.signal})
     .then(function(resp){
       if(generation !== pollGeneration) return null;
       var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
@@ -1035,7 +1059,8 @@ function startInitiativePolling(){
 
 function initiativePollNext(generation){
   if(generation !== initiativePollGeneration || !initiativeCampaignSlug) return;
-  fetch("/api/campaign/"+encodeURIComponent(initiativeCampaignSlug)+"/initiative/wait?since="+lastKnownInitiativeUpdatedAt, {cache:"no-store"})
+  initiativeAbortCtrl = new AbortController();
+  fetch("/api/campaign/"+encodeURIComponent(initiativeCampaignSlug)+"/initiative/wait?since="+lastKnownInitiativeUpdatedAt, {cache:"no-store", signal:initiativeAbortCtrl.signal})
     .then(function(resp){
       if(generation !== initiativePollGeneration) return null;
       var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
@@ -2604,6 +2629,7 @@ function applySettings(){
   document.body.classList.toggle("hide-effects", !s.effects);
   document.body.classList.toggle("hide-flyspeed", !s.flySpeed);
   document.body.classList.toggle("hide-swimspeed", !s.swimSpeed);
+  document.body.classList.toggle("hide-climbspeed", !s.climbSpeed);
   ensureActiveTabVisible();
 }
 
@@ -3062,6 +3088,15 @@ function onSwimSpeedModChanged(newMod){
   }
   state.combat.swimSpeedModPrev = newMod;
 }
+function onClimbSpeedModChanged(newMod){
+  var prev = Number(state.combat.climbSpeedModPrev)||0;
+  var delta = newMod - prev;
+  if(delta!==0){
+    state.combat.climbSpeed = (Number(state.combat.climbSpeed)||0) + delta;
+    syncBind("combat.climbSpeed");
+  }
+  state.combat.climbSpeedModPrev = newMod;
+}
 
 function handleBind(e){
   var el = e.target;
@@ -3082,6 +3117,7 @@ function handleBind(e){
   else if(el.dataset.bind==="combat.speedMod"){ onSpeedModChanged(Number(val)||0); renderComputed(); }
   else if(el.dataset.bind==="combat.flySpeedMod"){ onFlySpeedModChanged(Number(val)||0); renderComputed(); }
   else if(el.dataset.bind==="combat.swimSpeedMod"){ onSwimSpeedModChanged(Number(val)||0); renderComputed(); }
+  else if(el.dataset.bind==="combat.climbSpeedMod"){ onClimbSpeedModChanged(Number(val)||0); renderComputed(); }
   else{
     var slotMatch = el.dataset.bind.match(/^spellcasting\.slots\.(\d+)\.(total|current)$/);
     if(slotMatch){
@@ -3132,6 +3168,21 @@ function activateTab(btn){
   panel.classList.add("active");
   panel.querySelectorAll("textarea.auto-grow").forEach(autoGrow);
   if(btn.dataset.tab==="battlemap"){ setTimeout(pcResetBoardView, 0); }
+  if(btn.dataset.tab==="bastion"){ pauseBackgroundPolling(); loadBastionFrame(); }
+  else{ resumeBackgroundPolling(); }
+}
+
+function loadBastionFrame(){
+  var frame = document.getElementById("bastion-frame");
+  var hint = document.getElementById("bastion-tab-hint");
+  if(!frame || !hint) return;
+  var slug = campaignSlug(state.meta.campaign);
+  frame.style.display = slug ? "" : "none";
+  hint.style.display = slug ? "none" : "";
+  if(slug && frame.dataset.slug!==slug){
+    frame.dataset.slug = slug;
+    frame.src = "bastion.html?embed=1&campaign="+encodeURIComponent(slug);
+  }
 }
 
 function setupTabs(){

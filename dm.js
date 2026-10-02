@@ -48,10 +48,17 @@ function dmLoadParty(slug){
   });
 }
 
+var dmPartyHighestLevel = 0;
+
 function dmRenderParty(results){
   var el = document.getElementById("dm-party-list");
   var countEl = document.getElementById("dm-party-count");
   if(countEl) countEl.textContent = results.length ? (results.length+(results.length===1?" character":" characters")) : "";
+  dmPartyHighestLevel = 0;
+  results.forEach(function(r){
+    if(r.full && r.full.meta){ dmPartyHighestLevel = Math.max(dmPartyHighestLevel, computeDisplayStatsFor(r.full).level); }
+  });
+  dmRenderBastionHint();
   if(!results.length){ el.innerHTML = '<div class="footer-line">No characters found in this campaign.</div>'; return; }
   el.innerHTML = results.map(function(r){
     var full = r.full;
@@ -100,6 +107,61 @@ function dmSaveNotes(){
 
 var dmInitiativeState = {round:1, currentId:null, entries:[]};
 var dmInitiativePollGeneration = 0;
+var dmInitiativeAbortCtrl = null;
+var dmBoardStateAbortCtrl = null;
+var dmStatblocksAbortCtrl = null;
+var dmBackgroundPollsPaused = false;
+
+// Mirrors the same fix on the player character sheet: pause the DM screen's own long-held
+// connections (initiative, board state, statblocks) while the Bastion tab is loading its iframe,
+// so those requests aren't queued behind the browser's 6-connections-per-origin cap.
+var dmBastionEnabled = false;
+var dmBastionSettingsLoaded = false;
+
+function dmRenderBastionHint(){
+  var hint = document.getElementById("dm-bastion-hint");
+  if(!hint) return;
+  var levelNote = dmPartyHighestLevel
+    ? ("Party level "+dmPartyHighestLevel+(dmPartyHighestLevel>=5 ? " — ready to unlock." : " — bastions usually unlock at level 5."))
+    : "";
+  hint.textContent = (dmBastionEnabled ? "Players can see and edit this. " : "Hidden from players. ") + levelNote;
+}
+
+function dmLoadBastionSettings(){
+  if(!dmCampaignSlug) return;
+  fetch("/api/campaign/"+encodeURIComponent(dmCampaignSlug)+"/settings", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(data){
+    dmBastionEnabled = !!(data && data.bastionEnabled);
+    document.getElementById("dm-bastion-toggle").checked = dmBastionEnabled;
+    dmRenderBastionHint();
+  }).catch(function(){});
+}
+
+function dmSaveBastionSettings(){
+  if(!dmCampaignSlug || !dmToken) return;
+  fetch("/api/campaign/"+encodeURIComponent(dmCampaignSlug)+"/settings", {
+    method:"POST", headers:{"Content-Type":"application/json","X-DM-Token":dmToken}, body:JSON.stringify({bastionEnabled:dmBastionEnabled})
+  }).catch(function(){});
+}
+
+function dmPauseBackgroundPolling(){
+  if(dmBackgroundPollsPaused) return;
+  dmBackgroundPollsPaused = true;
+  dmInitiativePollGeneration++;
+  if(dmInitiativeAbortCtrl){ dmInitiativeAbortCtrl.abort(); dmInitiativeAbortCtrl = null; }
+  dmBoardStatePollGeneration++;
+  if(dmBoardStateAbortCtrl){ dmBoardStateAbortCtrl.abort(); dmBoardStateAbortCtrl = null; }
+  dmStatblocksPollGeneration++;
+  if(dmStatblocksAbortCtrl){ dmStatblocksAbortCtrl.abort(); dmStatblocksAbortCtrl = null; }
+}
+function dmResumeBackgroundPolling(){
+  if(!dmBackgroundPollsPaused) return;
+  dmBackgroundPollsPaused = false;
+  if(dmCampaignSlug){
+    dmInitiativePollNext(dmInitiativePollGeneration, dmCampaignSlug);
+    dmBoardStatePollNext(dmBoardStatePollGeneration, dmCampaignSlug);
+    dmStatblocksPollNext(dmStatblocksPollGeneration, dmCampaignSlug);
+  }
+}
 var dmLastKnownInitiativeUpdatedAt = 0;
 
 function dmSortedInitiativeEntries(){
@@ -175,7 +237,8 @@ function dmStartInitiativePolling(slug){
 
 function dmInitiativePollNext(generation, slug){
   if(generation!==dmInitiativePollGeneration || slug!==dmCampaignSlug) return;
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/initiative/wait?since="+dmLastKnownInitiativeUpdatedAt, {cache:"no-store"})
+  dmInitiativeAbortCtrl = new AbortController();
+  fetch("/api/campaign/"+encodeURIComponent(slug)+"/initiative/wait?since="+dmLastKnownInitiativeUpdatedAt, {cache:"no-store", signal:dmInitiativeAbortCtrl.signal})
     .then(function(resp){
       if(generation!==dmInitiativePollGeneration) return null;
       var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
@@ -505,9 +568,383 @@ function dmSwitchView(view){
   });
   document.getElementById("dmscreen-view-dashboard").style.display = view==="dashboard" ? "" : "none";
   document.getElementById("dmscreen-view-battlemap").style.display = view==="battlemap" ? "" : "none";
+  document.getElementById("dmscreen-view-bastion").style.display = view==="bastion" ? "" : "none";
+  document.getElementById("dmscreen-view-sessions").style.display = view==="sessions" ? "" : "none";
+  document.getElementById("dmscreen-view-world").style.display = view==="world" ? "" : "none";
+  if(view==="bastion"){
+    dmPauseBackgroundPolling();
+    if(!dmBastionSettingsLoaded){ dmBastionSettingsLoaded = true; dmLoadBastionSettings(); }
+    var frame = document.getElementById("dm-bastion-frame");
+    if(!frame.getAttribute("src")) frame.src = "bastion.html?embed=1&dm=1&campaign="+encodeURIComponent(dmCampaignSlug);
+  } else {
+    dmResumeBackgroundPolling();
+  }
   if(view==="battlemap"){
     setTimeout(dmResetBoardView, 0);
   }
+  if(view==="sessions" && !spLoaded){ spLoaded = true; spLoad(); }
+  if(view==="world" && !wbLoaded){ wbLoaded = true; wbLoad(); }
+}
+
+/* ==================== Session Planner ==================== */
+// A session is a plan for one upcoming game, made of ordered Sections (e.g. "Opening", "Combat", "Cliffhanger"),
+// each holding ordered Rooms — individual scenes, encounters or beats the DM can check off during play.
+
+var spData = {sessions:[], activeId:null};
+var spLoaded = false;
+var spSaveTimer = null;
+
+function spId(prefix){ return prefix+"-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function spNewRoom(){ return {id:spId("rm"), title:"", notes:"", done:false}; }
+function spNewSection(title){ return {id:spId("sec"), title:title||"Section", rooms:[spNewRoom()]}; }
+function spNewSession(title){
+  return {id:spId("sess"), title:title||"New Session", date:"", goal:"", sections:[spNewSection("Opening")]};
+}
+function spActiveSession(){
+  return spData.sessions.find(function(s){ return s.id===spData.activeId; }) || null;
+}
+
+function spScheduleSave(){
+  var el = document.getElementById("sp-status");
+  if(el) el.textContent = "Saving…";
+  if(spSaveTimer) clearTimeout(spSaveTimer);
+  spSaveTimer = setTimeout(spSave, 500);
+}
+function spSave(){
+  spSaveTimer = null;
+  if(!dmCampaignSlug || !dmToken) return;
+  fetch("/api/dm/sessions/"+encodeURIComponent(dmCampaignSlug), {
+    method:"POST", headers:{"Content-Type":"application/json","X-DM-Token":dmToken}, body:JSON.stringify(spData)
+  }).then(function(r){
+    setText("sp-status", r.ok ? "Saved" : "Save failed");
+  }).catch(function(){ setText("sp-status", "Save failed"); });
+}
+
+function spLoad(){
+  if(!dmCampaignSlug || !dmToken) return;
+  fetch("/api/dm/sessions/"+encodeURIComponent(dmCampaignSlug), {headers:{"X-DM-Token":dmToken}, cache:"no-store"}).then(function(r){ return r.json(); }).then(function(data){
+    spData = (data && Array.isArray(data.sessions)) ? data : {sessions:[], activeId:null};
+    if(!spData.sessions.length){ spData.sessions.push(spNewSession("Session 1")); }
+    if(!spActiveSession()){ spData.activeId = spData.sessions[0].id; }
+    spRenderAll();
+  }).catch(function(){
+    setText("sp-status", "Could not load — is the server running?");
+  });
+}
+
+function spRenderAll(){
+  spRenderSelect();
+  spRenderBody();
+}
+
+function spRenderSelect(){
+  var sel = document.getElementById("sp-session-select");
+  if(!sel) return;
+  sel.innerHTML = spData.sessions.map(function(s){
+    return '<option value="'+esc(s.id)+'"'+(s.id===spData.activeId?" selected":"")+'>'+esc(s.title||"(untitled)")+'</option>';
+  }).join("");
+}
+
+function spRenderBody(){
+  var el = document.getElementById("sp-body");
+  if(!el) return;
+  var session = spActiveSession();
+  if(!session){ el.innerHTML = '<div class="footer-line">No session selected.</div>'; return; }
+  var html = '<div class="sp-layout">';
+  html += '<div class="sp-meta-col">'+
+    '<div class="wizard-field"><label>Date / When</label><input type="text" data-sp="date" value="'+esc(session.date||"")+'" placeholder="e.g. Next Tuesday"></div>'+
+    '<div class="wizard-field sp-goal-field"><label>Session Goal / Recap</label><textarea data-sp="goal" class="auto-grow" rows="6" placeholder="What should this session accomplish? What happened last time?">'+esc(session.goal||"")+'</textarea></div>'+
+    '</div>';
+  html += '<div class="sp-sections-col">';
+  html += '<div class="sp-sections">'+session.sections.map(function(sec, si){
+    return spSectionHtml(sec, si, session.sections.length);
+  }).join("")+'</div>';
+  html += '<button type="button" class="btn add-row-btn" id="sp-add-section">+ Add Section</button>';
+  html += '</div></div>';
+  el.innerHTML = html;
+  el.querySelectorAll("textarea.auto-grow").forEach(autoGrow);
+}
+
+function spSectionHtml(sec, si, total){
+  var html = '<div class="sp-section" data-sec="'+sec.id+'">'+
+    '<div class="sp-section-head">'+
+    '<button type="button" class="sp-move" data-sp-act="sec-up" data-sec="'+sec.id+'" title="Move up"'+(si===0?" disabled":"")+'>&#9650;</button>'+
+    '<button type="button" class="sp-move" data-sp-act="sec-down" data-sec="'+sec.id+'" title="Move down"'+(si===total-1?" disabled":"")+'>&#9660;</button>'+
+    '<input type="text" class="sp-section-title" data-sp="sec-title" data-sec="'+sec.id+'" value="'+esc(sec.title)+'" placeholder="Section name">'+
+    '<button type="button" class="row-del" data-sp-act="sec-del" data-sec="'+sec.id+'" title="Delete section">&times;</button>'+
+    '</div>'+
+    '<div class="sp-rooms">'+sec.rooms.map(function(room, ri){
+      return spRoomHtml(sec, room, ri, sec.rooms.length);
+    }).join("")+'</div>'+
+    '<button type="button" class="btn" data-sp-act="room-add" data-sec="'+sec.id+'">+ Add Room</button>'+
+    '</div>';
+  return html;
+}
+
+function spRoomHtml(sec, room, ri, total){
+  return '<div class="sp-room'+(room.done?" sp-room-done":"")+'" data-room="'+room.id+'">'+
+    '<div class="sp-room-head">'+
+    '<input type="checkbox" data-sp="room-done" data-sec="'+sec.id+'" data-room="'+room.id+'"'+(room.done?" checked":"")+' title="Mark done">'+
+    '<button type="button" class="sp-move" data-sp-act="room-up" data-sec="'+sec.id+'" data-room="'+room.id+'" title="Move up"'+(ri===0?" disabled":"")+'>&#9650;</button>'+
+    '<button type="button" class="sp-move" data-sp-act="room-down" data-sec="'+sec.id+'" data-room="'+room.id+'" title="Move down"'+(ri===total-1?" disabled":"")+'>&#9660;</button>'+
+    '<input type="text" class="sp-room-title" data-sp="room-title" data-sec="'+sec.id+'" data-room="'+room.id+'" value="'+esc(room.title)+'" placeholder="Room / scene / encounter name">'+
+    '<button type="button" class="row-del" data-sp-act="room-del" data-sec="'+sec.id+'" data-room="'+room.id+'" title="Delete room">&times;</button>'+
+    '</div>'+
+    '<textarea class="sp-room-notes auto-grow" data-sp="room-notes" data-sec="'+sec.id+'" data-room="'+room.id+'" rows="1" placeholder="Read-aloud text, monsters, DCs, notes…">'+esc(room.notes||"")+'</textarea>'+
+    '</div>';
+}
+
+function spFindSection(id){
+  var session = spActiveSession();
+  return session ? session.sections.find(function(s){ return s.id===id; }) : null;
+}
+function spFindRoom(sec, id){
+  return sec ? sec.rooms.find(function(r){ return r.id===id; }) : null;
+}
+
+function spAddSession(){
+  var s = spNewSession("Session "+(spData.sessions.length+1));
+  spData.sessions.push(s);
+  spData.activeId = s.id;
+  spRenderAll();
+  spScheduleSave();
+}
+function spRenameSession(){
+  var session = spActiveSession();
+  if(!session) return;
+  var name = prompt("Session name:", session.title);
+  if(name===null || !name.trim()) return;
+  session.title = name.trim();
+  spRenderAll();
+  spScheduleSave();
+}
+function spDuplicateSession(){
+  var session = spActiveSession();
+  if(!session) return;
+  var copy = JSON.parse(JSON.stringify(session));
+  copy.id = spId("sess");
+  copy.title = session.title+" (Copy)";
+  copy.sections.forEach(function(sec){
+    sec.id = spId("sec");
+    sec.rooms.forEach(function(r){ r.id = spId("rm"); r.done = false; });
+  });
+  var idx = spData.sessions.indexOf(session);
+  spData.sessions.splice(idx+1, 0, copy);
+  spData.activeId = copy.id;
+  spRenderAll();
+  spScheduleSave();
+}
+function spDeleteSession(){
+  if(spData.sessions.length<=1){ alert("Keep at least one session."); return; }
+  var session = spActiveSession();
+  if(!session || !confirm('Delete "'+session.title+'"?')) return;
+  var idx = spData.sessions.indexOf(session);
+  spData.sessions.splice(idx,1);
+  spData.activeId = (spData.sessions[idx]||spData.sessions[idx-1]).id;
+  spRenderAll();
+  spScheduleSave();
+}
+
+function spAddSection(){
+  var session = spActiveSession();
+  if(!session) return;
+  session.sections.push(spNewSection("New Section"));
+  spRenderAll();
+  spScheduleSave();
+}
+
+function spHandleAction(e){
+  var btn = e.target.closest("button[data-sp-act]");
+  if(!btn) return;
+  var session = spActiveSession();
+  if(!session) return;
+  var act = btn.dataset.spAct;
+  var sec = spFindSection(btn.dataset.sec);
+  if(act==="sec-up" || act==="sec-down"){
+    var si = session.sections.indexOf(sec);
+    var sj = act==="sec-up" ? si-1 : si+1;
+    if(sj<0 || sj>=session.sections.length) return;
+    session.sections.splice(sj, 0, session.sections.splice(si,1)[0]);
+  } else if(act==="sec-del"){
+    if(session.sections.length<=1){ alert("A session needs at least one section."); return; }
+    if(!confirm('Delete section "'+(sec.title||"this section")+'" and its rooms?')) return;
+    session.sections = session.sections.filter(function(s){ return s!==sec; });
+  } else if(act==="room-add"){
+    sec.rooms.push(spNewRoom());
+  } else if(act==="room-up" || act==="room-down"){
+    var room = spFindRoom(sec, btn.dataset.room);
+    var ri = sec.rooms.indexOf(room);
+    var rj = act==="room-up" ? ri-1 : ri+1;
+    if(rj<0 || rj>=sec.rooms.length) return;
+    sec.rooms.splice(rj, 0, sec.rooms.splice(ri,1)[0]);
+  } else if(act==="room-del"){
+    sec.rooms = sec.rooms.filter(function(r){ return r.id!==btn.dataset.room; });
+  }
+  spRenderAll();
+  spScheduleSave();
+}
+
+function spHandleInput(e){
+  var t = e.target;
+  var field = t.dataset && t.dataset.sp;
+  if(!field) return;
+  var session = spActiveSession();
+  if(!session) return;
+  if(field==="date"){ session.date = t.value; spScheduleSave(); return; }
+  if(field==="goal"){ session.goal = t.value; spScheduleSave(); return; }
+  var sec = spFindSection(t.dataset.sec);
+  if(!sec) return;
+  if(field==="sec-title"){ sec.title = t.value; spScheduleSave(); return; }
+  var room = spFindRoom(sec, t.dataset.room);
+  if(!room) return;
+  if(field==="room-title"){ room.title = t.value; spScheduleSave(); }
+  else if(field==="room-notes"){ room.notes = t.value; spScheduleSave(); }
+  else if(field==="room-done"){
+    room.done = t.checked;
+    t.closest(".sp-room").classList.toggle("sp-room-done", room.done);
+    spScheduleSave();
+  }
+}
+
+/* ==================== World Building ==================== */
+
+var WB_DEFAULT_SECTIONS = [
+  ["Overview", ""],
+  ["Geography", ""],
+  ["History", ""],
+  ["Gods & Religion", ""],
+  ["Cultures & Peoples", ""],
+  ["Factions & Empires", ""],
+  ["Military", ""],
+  ["Notable Locations", ""],
+  ["Plot Points & Secrets", ""],
+  ["Resources & Links", ""]
+];
+
+var wbData = {sections:[], columns:2};
+var wbLoaded = false;
+var wbSaveTimer = null;
+var wbCollapsed = {};
+var WB_MIN_COLUMNS = 1;
+var WB_MAX_COLUMNS = 4;
+
+function wbId(){ return "wb-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function wbScheduleSave(){
+  var el = document.getElementById("wb-status");
+  if(el) el.textContent = "Saving…";
+  if(wbSaveTimer) clearTimeout(wbSaveTimer);
+  wbSaveTimer = setTimeout(wbSave, 500);
+}
+function wbSave(){
+  wbSaveTimer = null;
+  if(!dmCampaignSlug || !dmToken) return;
+  fetch("/api/dm/world/"+encodeURIComponent(dmCampaignSlug), {
+    method:"POST", headers:{"Content-Type":"application/json","X-DM-Token":dmToken}, body:JSON.stringify(wbData)
+  }).then(function(r){
+    setText("wb-status", r.ok ? "Saved" : "Save failed");
+  }).catch(function(){ setText("wb-status", "Save failed"); });
+}
+
+function wbLoad(){
+  if(!dmCampaignSlug || !dmToken) return;
+  fetch("/api/dm/world/"+encodeURIComponent(dmCampaignSlug), {headers:{"X-DM-Token":dmToken}, cache:"no-store"}).then(function(r){ return r.json(); }).then(function(data){
+    wbData = (data && Array.isArray(data.sections)) ? data : {sections:[], columns:2};
+    wbData.columns = Math.max(WB_MIN_COLUMNS, Math.min(WB_MAX_COLUMNS, Number(wbData.columns)||2));
+    if(!wbData.sections.length){
+      wbData.sections = WB_DEFAULT_SECTIONS.map(function(d){ return {id:wbId(), title:d[0], body:d[1]}; });
+      wbScheduleSave();
+    }
+    wbRender();
+  }).catch(function(){
+    setText("wb-status", "Could not load — is the server running?");
+  });
+}
+
+function wbRenderColumnsControl(){
+  var val = document.getElementById("wb-columns-value");
+  var down = document.getElementById("wb-columns-down");
+  var up = document.getElementById("wb-columns-up");
+  if(val) val.textContent = wbData.columns;
+  if(down) down.disabled = wbData.columns<=WB_MIN_COLUMNS;
+  if(up) up.disabled = wbData.columns>=WB_MAX_COLUMNS;
+}
+
+function wbSetColumns(delta){
+  wbData.columns = Math.max(WB_MIN_COLUMNS, Math.min(WB_MAX_COLUMNS, (Number(wbData.columns)||2)+delta));
+  wbRenderColumnsControl();
+  var el = document.getElementById("wb-body");
+  if(el) el.style.columnCount = wbData.columns;
+  wbScheduleSave();
+}
+
+function wbRender(){
+  var el = document.getElementById("wb-body");
+  if(!el) return;
+  wbRenderColumnsControl();
+  el.style.columnCount = wbData.columns;
+  if(!wbData.sections.length){ el.innerHTML = '<div class="footer-line">No sections yet — add one to start building your world.</div>'; return; }
+  el.innerHTML = wbData.sections.map(function(sec, i){
+    var expanded = wbCollapsed[sec.id]!==true;
+    return '<div class="wb-section">'+
+      '<div class="wb-section-head">'+
+      '<button type="button" class="wb-toggle" data-wb-act="toggle" data-sec="'+sec.id+'">'+
+      '<span class="caret">'+(expanded?"&#9662;":"&#9656;")+'</span></button>'+
+      '<input type="text" class="wb-section-title" data-wb="title" data-sec="'+sec.id+'" value="'+esc(sec.title)+'" placeholder="Section title">'+
+      '<button type="button" class="sp-move" data-wb-act="up" data-sec="'+sec.id+'" title="Move up"'+(i===0?" disabled":"")+'>&#9650;</button>'+
+      '<button type="button" class="sp-move" data-wb-act="down" data-sec="'+sec.id+'" title="Move down"'+(i===wbData.sections.length-1?" disabled":"")+'>&#9660;</button>'+
+      '<button type="button" class="row-del" data-wb-act="del" data-sec="'+sec.id+'" title="Delete section">&times;</button>'+
+      '</div>'+
+      (expanded ? '<textarea class="wb-section-body auto-grow" data-wb="body" data-sec="'+sec.id+'" rows="3" placeholder="Write it up…">'+esc(sec.body||"")+'</textarea>' : '')+
+      '</div>';
+  }).join("");
+  el.querySelectorAll("textarea.auto-grow").forEach(autoGrow);
+}
+
+function wbFindSection(id){
+  return wbData.sections.find(function(s){ return s.id===id; });
+}
+
+function wbAddSection(){
+  var sec = {id:wbId(), title:"New Section", body:""};
+  wbData.sections.push(sec);
+  wbRender();
+  wbScheduleSave();
+}
+
+function wbHandleAction(e){
+  var btn = e.target.closest("button[data-wb-act]");
+  if(!btn) return;
+  var sec = wbFindSection(btn.dataset.sec);
+  if(!sec) return;
+  var act = btn.dataset.wbAct;
+  if(act==="toggle"){
+    wbCollapsed[sec.id] = !wbCollapsed[sec.id];
+    wbRender();
+    return;
+  }
+  if(act==="up" || act==="down"){
+    var i = wbData.sections.indexOf(sec);
+    var j = act==="up" ? i-1 : i+1;
+    if(j<0 || j>=wbData.sections.length) return;
+    wbData.sections.splice(j, 0, wbData.sections.splice(i,1)[0]);
+  } else if(act==="del"){
+    if(!confirm('Delete section "'+(sec.title||"this section")+'"?')) return;
+    wbData.sections = wbData.sections.filter(function(s){ return s!==sec; });
+  }
+  wbRender();
+  wbScheduleSave();
+}
+
+function wbHandleInput(e){
+  var t = e.target;
+  var field = t.dataset && t.dataset.wb;
+  if(!field) return;
+  var sec = wbFindSection(t.dataset.sec);
+  if(!sec) return;
+  if(field==="title"){ sec.title = t.value; }
+  else if(field==="body"){ sec.body = t.value; }
+  wbScheduleSave();
 }
 
 var dmActiveTool = "pan";
@@ -1055,7 +1492,8 @@ function dmLoadBoardTokens(slug){
 function dmBoardStatePollNext(generation, slug){
   if(generation!==dmBoardStatePollGeneration || slug!==dmCampaignSlug) return;
   var since = Math.max(dmLastKnownBoardTokensUpdatedAt, dmLastKnownShapesUpdatedAt);
-  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-state/wait?since="+since, {cache:"no-store"})
+  dmBoardStateAbortCtrl = new AbortController();
+  fetch("/api/campaign/"+encodeURIComponent(slug)+"/board-state/wait?since="+since, {cache:"no-store", signal:dmBoardStateAbortCtrl.signal})
     .then(function(resp){
       if(generation!==dmBoardStatePollGeneration) return null;
       if(resp.status===200){ return resp.json(); }
@@ -1089,8 +1527,54 @@ var dmStatblocksPollGeneration = 0;
 var dmLastKnownStatblocksUpdatedAt = 0;
 var dmStatblocksSaveTimer = null;
 
+var DM_SAVE_ABILITY_KEYS = ["str","dex","con","int","wis","cha"];
+
+// Free monster stat blocks (parseStatblock, shared with the player Summons tab) come out with a
+// free-text "Saving Throws" line and three separate damage-type fields. The DM tracker instead
+// wants a proper per-ability saves row and one merged text field — this reshapes either a freshly
+// parsed block or one loaded from disk (possibly saved in the old shape) into that form.
+function dmParseSaveBonusesFromText(text){
+  var out = {str:"",dex:"",con:"",int:"",wis:"",cha:""};
+  if(!text) return out;
+  var re = /\b(Str|Dex|Con|Int|Wis|Cha)\b\s*([+\-−]\s*\d+)/gi;
+  var m;
+  while((m = re.exec(text))){
+    out[m[1].toLowerCase()] = m[2].replace(/\s+/g,"").replace(/−/g,"-");
+  }
+  return out;
+}
+
+function dmMergeResistanceText(s){
+  var parts = [];
+  if(s.vulnerabilities && s.vulnerabilities.trim()) parts.push("Vulnerable: "+s.vulnerabilities.trim());
+  if(s.resistances && s.resistances.trim()) parts.push("Resistant: "+s.resistances.trim());
+  if(s.immunities && s.immunities.trim()) parts.push("Immune: "+s.immunities.trim());
+  if(s.conditionImmunities && s.conditionImmunities.trim()) parts.push("Condition Immune: "+s.conditionImmunities.trim());
+  return parts.join(" · ");
+}
+
+function dmNormalizeStatblock(s){
+  if(!s.saveBonuses){ s.saveBonuses = dmParseSaveBonusesFromText(s.saves||""); }
+  if(s.resistancesText===undefined){
+    s.resistancesText = dmMergeResistanceText(s);
+  } else if(s.conditionImmunities && s.conditionImmunities.trim()){
+    // Blocks normalized before Condition Immunities was folded in still carry it separately — merge it in now.
+    s.resistancesText = (s.resistancesText ? s.resistancesText+" · " : "")+"Condition Immune: "+s.conditionImmunities.trim();
+  }
+  delete s.saves;
+  delete s.vulnerabilities;
+  delete s.resistances;
+  delete s.immunities;
+  delete s.conditionImmunities;
+  if(s.meta){
+    var sizeStrip = s.meta.match(/^(Tiny|Small|Medium|Large|Huge|Gargantuan)\b[,\s]*/i);
+    if(sizeStrip){ s.meta = s.meta.slice(sizeStrip[0].length).trim(); }
+  }
+  return s;
+}
+
 function dmDefaultStatblock(){
-  return defaultSummon();
+  return dmNormalizeStatblock(defaultSummon());
 }
 
 function dmStatblockAbilityBoxHtml(i, key, label){
@@ -1099,6 +1583,14 @@ function dmStatblockAbilityBoxHtml(i, key, label){
     '<div class="summon-ability-seal"><span class="summon-ability-mod mono" id="dm-statblock-mod-'+i+'-'+key+'">'+fmt(mod(score))+'</span></div>'+
     '<div class="summon-ability-name">'+label+'</div>'+
     '<input type="number" class="summon-ability-score mono no-spin" value="'+score+'" oninput="dmUpdateStatblockAbility('+i+',\''+key+'\',this.value)">'+
+    '</div>';
+}
+
+function dmStatblockSaveChipHtml(i, key){
+  var val = dmStatblocks[i].saveBonuses[key];
+  return '<div class="summon-save-chip">'+
+    '<span class="summon-save-name">'+key.toUpperCase()+'</span>'+
+    '<input type="text" class="summon-save-input mono" value="'+esc(val)+'" placeholder="—" oninput="dmUpdateStatblockSaveBonus('+i+',\''+key+'\',this.value)">'+
     '</div>';
 }
 
@@ -1140,8 +1632,8 @@ function dmStatblockCardHtml(i){
     '<button class="btn" onclick="dmAddStatblockToInitiative('+i+')" title="Roll initiative and add to the tracker">+ Initiative</button>'+
     '<button class="row-del" onclick="dmRemoveStatblock('+i+')">&times;</button>'+
     '</div>'+
-    '<div class="summon-details-grid" style="margin-bottom:var(--sp-2);">'+
-    '<div class="field"><label>Type</label><textarea rows="1" class="auto-grow" placeholder="e.g. Large Elemental" oninput="dmUpdateStatblockField('+i+',\'meta\',this.value);autoGrow(this);">'+esc(s.meta)+'</textarea></div>'+
+    '<div class="summon-type-row" style="margin-bottom:var(--sp-2);">'+
+    '<div class="field"><label>Type</label><input type="text" placeholder="e.g. Elemental" value="'+esc(s.meta)+'" oninput="dmUpdateStatblockField('+i+',\'meta\',this.value)"></div>'+
     '<div class="field"><label>Size (map token)</label><select onchange="dmUpdateStatblockField('+i+',\'size\',this.value)">'+sizeSelectOptionsHtml(s.size)+'</select></div>'+
     '</div>'+
 
@@ -1149,18 +1641,21 @@ function dmStatblockCardHtml(i){
     '<div class="summon-mini-stat"><input value="'+esc(s.ac)+'" oninput="dmUpdateStatblockField('+i+',\'ac\',this.value)"><div class="lbl">AC</div></div>'+
     '<div class="summon-mini-stat"><input value="'+esc(s.initiative)+'" oninput="dmUpdateStatblockField('+i+',\'initiative\',this.value)"><div class="lbl">Initiative</div></div>'+
     '<div class="summon-mini-stat"><input value="'+esc(s.speed)+'" oninput="dmUpdateStatblockField('+i+',\'speed\',this.value)"><div class="lbl">Speed</div></div>'+
+    '</div>'+
+
+    '<div class="summon-stat-row summon-hp-row">'+
     '<div class="summon-mini-stat summon-hp-box">'+
     '<div class="resource-vals">'+
     '<button class="btn resource-btn" onclick="dmAdjustStatblockHp('+i+',-1)">-</button>'+
-    '<input type="number" class="no-spin" style="width:34px;text-align:center;" value="'+(s.hpCurrent||0)+'" onchange="dmUpdateStatblockField('+i+',\'hpCurrent\',Number(this.value)||0)">'+
+    '<input type="number" class="no-spin" style="width:30px;text-align:center;" value="'+(s.hpCurrent||0)+'" onchange="dmUpdateStatblockField('+i+',\'hpCurrent\',Number(this.value)||0)">'+
     '<span class="hp-sep">/</span>'+
-    '<input type="number" class="no-spin" style="width:34px;text-align:center;" value="'+(s.hpMax||0)+'" onchange="dmUpdateStatblockField('+i+',\'hpMax\',Number(this.value)||0)">'+
+    '<input type="number" class="no-spin" style="width:30px;text-align:center;" value="'+(s.hpMax||0)+'" onchange="dmUpdateStatblockField('+i+',\'hpMax\',Number(this.value)||0)">'+
     '<button class="btn resource-btn" onclick="dmAdjustStatblockHp('+i+',1)">+</button>'+
     '</div>'+
     '<div class="lbl">HP'+(s.hpFormula?' <span class="mono">'+esc(s.hpFormula)+'</span>':'')+'</div>'+
     '</div>'+
-    '<div class="summon-mini-stat summon-hp-box">'+
-    '<input type="number" class="no-spin" style="width:44px;text-align:center;" id="dm-statblock-hpdelta-'+i+'" placeholder="0">'+
+    '<div class="summon-mini-stat summon-quickdmg-box">'+
+    '<input type="number" class="no-spin" style="width:36px;text-align:center;" id="dm-statblock-hpdelta-'+i+'" placeholder="0">'+
     '<div class="resource-vals" style="margin-top:3px;">'+
     '<button class="btn resource-btn" onclick="dmQuickDamageStatblock('+i+')">Dmg</button>'+
     '<button class="btn resource-btn" onclick="dmQuickHealStatblock('+i+')">Heal</button>'+
@@ -1172,12 +1667,15 @@ function dmStatblockCardHtml(i){
     ["str","dex","con","int","wis","cha"].map(function(k){ return dmStatblockAbilityBoxHtml(i,k,k.toUpperCase()); }).join("")+
     '</div>'+
 
-    '<div class="summon-details-grid">'+
-    dmStatblockShortFieldHtml(i,"saves","Saving Throws")+
-    dmStatblockShortFieldHtml(i,"vulnerabilities","Vulnerabilities")+
-    dmStatblockShortFieldHtml(i,"resistances","Resistances")+
-    dmStatblockShortFieldHtml(i,"immunities","Damage Immunities")+
-    dmStatblockShortFieldHtml(i,"conditionImmunities","Condition Immunities")+
+    '<div class="summon-saves-row">'+
+    '<div class="summon-saves-label">Saves</div>'+
+    '<div class="summon-saves">'+
+    DM_SAVE_ABILITY_KEYS.map(function(k){ return dmStatblockSaveChipHtml(i,k); }).join("")+
+    '</div>'+
+    '</div>'+
+
+    '<div class="summon-2col-row">'+
+    dmStatblockShortFieldHtml(i,"resistancesText","Resistances / Immunities / Vulnerabilities")+
     dmStatblockShortFieldHtml(i,"senses","Senses")+
     '</div>'+
 
@@ -1224,6 +1722,12 @@ function dmUpdateStatblockAbility(i, key, val){
   dmStatblocks[i].abilities[key] = score;
   var modEl = document.getElementById("dm-statblock-mod-"+i+"-"+key);
   if(modEl) modEl.textContent = fmt(mod(score));
+  dmScheduleSaveStatblocks();
+}
+
+function dmUpdateStatblockSaveBonus(i, key, val){
+  if(!dmStatblocks[i]) return;
+  dmStatblocks[i].saveBonuses[key] = val;
   dmScheduleSaveStatblocks();
 }
 
@@ -1303,7 +1807,7 @@ function dmImportStatblock(){
   var ta = document.getElementById("dm-statblock-import-text");
   var text = ta.value.trim();
   if(!text) return;
-  var block = parseStatblock(text);
+  var block = dmNormalizeStatblock(parseStatblock(text));
   dmStatblocks.push(block);
   ta.value = "";
   dmRenderStatblocks();
@@ -1330,7 +1834,7 @@ function dmLoadStatblocks(slug){
     dmLastKnownStatblocksUpdatedAt = parseFloat(r.headers.get("X-Updated-At"))||0;
     return r.json();
   }).then(function(data){
-    dmStatblocks = (data && Array.isArray(data.blocks)) ? data.blocks : [];
+    dmStatblocks = ((data && Array.isArray(data.blocks)) ? data.blocks : []).map(dmNormalizeStatblock);
     dmRenderStatblocks();
     dmStartStatblocksPolling(slug);
   }).catch(function(){
@@ -1345,7 +1849,8 @@ function dmStartStatblocksPolling(slug){
 
 function dmStatblocksPollNext(generation, slug){
   if(generation!==dmStatblocksPollGeneration || slug!==dmCampaignSlug) return;
-  fetch("/api/dm/statblocks/"+encodeURIComponent(slug)+"/wait?since="+dmLastKnownStatblocksUpdatedAt, {headers:{"X-DM-Token":dmToken}, cache:"no-store"})
+  dmStatblocksAbortCtrl = new AbortController();
+  fetch("/api/dm/statblocks/"+encodeURIComponent(slug)+"/wait?since="+dmLastKnownStatblocksUpdatedAt, {headers:{"X-DM-Token":dmToken}, cache:"no-store", signal:dmStatblocksAbortCtrl.signal})
     .then(function(resp){
       if(generation!==dmStatblocksPollGeneration) return null;
       var updatedHeader = parseFloat(resp.headers.get("X-Updated-At"));
@@ -1361,7 +1866,7 @@ function dmStatblocksPollNext(generation, slug){
       if(generation!==dmStatblocksPollGeneration) return;
       if(result){
         if(!dmStatblocksSaveTimer){
-          dmStatblocks = (result.data && Array.isArray(result.data.blocks)) ? result.data.blocks : dmStatblocks;
+          dmStatblocks = (result.data && Array.isArray(result.data.blocks)) ? result.data.blocks.map(dmNormalizeStatblock) : dmStatblocks;
           dmRenderStatblocks();
         }
         dmLastKnownStatblocksUpdatedAt = result.updatedAt;
@@ -1407,6 +1912,38 @@ function dmInit(){
   document.getElementById("btn-battlemap-zoom-reset").addEventListener("click", dmResetBoardView);
   document.querySelectorAll(".dmscreen-view-btn").forEach(function(btn){
     btn.addEventListener("click", function(){ dmSwitchView(btn.dataset.view); });
+  });
+  document.getElementById("dm-bastion-toggle").addEventListener("change", function(e){
+    dmBastionEnabled = e.target.checked;
+    dmRenderBastionHint();
+    dmSaveBastionSettings();
+  });
+  document.getElementById("sp-session-select").addEventListener("change", function(e){
+    spData.activeId = e.target.value;
+    spRenderBody();
+  });
+  document.getElementById("sp-session-add").addEventListener("click", spAddSession);
+  document.getElementById("sp-session-rename").addEventListener("click", spRenameSession);
+  document.getElementById("sp-session-duplicate").addEventListener("click", spDuplicateSession);
+  document.getElementById("sp-session-delete").addEventListener("click", spDeleteSession);
+  var spBody = document.getElementById("sp-body");
+  spBody.addEventListener("click", function(e){
+    if(e.target.id==="sp-add-section"){ spAddSection(); return; }
+    spHandleAction(e);
+  });
+  spBody.addEventListener("input", function(e){
+    if(e.target.classList.contains("auto-grow")) autoGrow(e.target);
+    spHandleInput(e);
+  });
+  spBody.addEventListener("change", spHandleInput);
+  document.getElementById("wb-add-section").addEventListener("click", wbAddSection);
+  document.getElementById("wb-columns-down").addEventListener("click", function(){ wbSetColumns(-1); });
+  document.getElementById("wb-columns-up").addEventListener("click", function(){ wbSetColumns(1); });
+  var wbBody = document.getElementById("wb-body");
+  wbBody.addEventListener("click", wbHandleAction);
+  wbBody.addEventListener("input", function(e){
+    if(e.target.classList.contains("auto-grow")) autoGrow(e.target);
+    wbHandleInput(e);
   });
   document.querySelectorAll(".battlemap-tool-btn").forEach(function(btn){
     btn.addEventListener("click", function(){ dmSetActiveTool(btn.dataset.tool); });

@@ -12,11 +12,14 @@
   <header class="dmscreen-topbar">
     <div>
       <div class="dmscreen-title display" id="dm-campaign-title">DM Screen</div>
-      <div class="dmscreen-subtitle">Dungeon Master View — hidden from players</div>
+      <div class="dmscreen-subtitle">Dungeon Master View</div>
     </div>
     <div class="dmscreen-view-toggle" id="dmscreen-view-toggle">
-      <button type="button" class="dmscreen-view-btn dmscreen-view-active" data-view="dashboard">Dashboard</button>
+      <button type="button" class="dmscreen-view-btn dmscreen-view-active" data-view="dashboard">Combat Dashboard</button>
       <button type="button" class="dmscreen-view-btn" data-view="battlemap">Battle Map</button>
+      <button type="button" class="dmscreen-view-btn" data-view="bastion">Bastion</button>
+      <button type="button" class="dmscreen-view-btn" data-view="sessions">Session Planner</button>
+      <button type="button" class="dmscreen-view-btn" data-view="world">World</button>
     </div>
     <button class="btn" id="btn-dm-logout">Log Out</button>
   </header>
@@ -48,7 +51,7 @@
           <span class="section-title" style="margin:0;">Party</span>
           <span class="footer-line" style="margin:0;" id="dm-party-count"></span>
         </div>
-        <div class="dm-party-grid" id="dm-party-list"></div>
+        <div class="dm-party-list" id="dm-party-list"></div>
       </section>
 
       <section class="dmscreen-col dmscreen-col-treasure">
@@ -124,6 +127,41 @@
           </div>
         </div>
       </section>
+    </div>
+
+    <div class="dmscreen-view" id="dmscreen-view-bastion" style="display:none;">
+      <div class="dmscreen-col-header bas-toolbar">
+        <label class="bas-check"><input type="checkbox" id="dm-bastion-toggle"> Unlocked for players</label>
+        <span class="footer-line" id="dm-bastion-hint" style="margin:0;"></span>
+      </div>
+      <iframe class="bas-frame bas-frame-dm" id="dm-bastion-frame" title="Bastion"></iframe>
+    </div>
+
+    <div class="dmscreen-view" id="dmscreen-view-sessions" style="display:none;">
+      <div class="dmscreen-col-header sp-toolbar">
+        <select id="sp-session-select"></select>
+        <button class="btn" id="sp-session-add" title="Plan a new session">+ New Session</button>
+        <button class="btn" id="sp-session-rename">Rename</button>
+        <button class="btn" id="sp-session-duplicate">Duplicate</button>
+        <button class="btn" id="sp-session-delete">Delete</button>
+        <span class="footer-line" id="sp-status" style="margin:0;"></span>
+      </div>
+      <div class="sp-body" id="sp-body"></div>
+    </div>
+
+    <div class="dmscreen-view" id="dmscreen-view-world" style="display:none;">
+      <div class="dmscreen-col-header">
+        <span class="section-title" style="margin:0;">World Building</span>
+        <button class="btn" id="wb-add-section">+ Add Section</button>
+        <div class="wb-columns-control">
+          <span class="footer-line" style="margin:0;">Columns</span>
+          <button type="button" class="btn" id="wb-columns-down" title="Fewer columns">&minus;</button>
+          <span class="mono" id="wb-columns-value">2</span>
+          <button type="button" class="btn" id="wb-columns-up" title="More columns">+</button>
+        </div>
+        <span class="footer-line" id="wb-status" style="margin:0;"></span>
+      </div>
+      <div class="wb-body" id="wb-body"></div>
     </div>
   </main>
 </div>

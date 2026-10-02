@@ -31,6 +31,10 @@
       <div class="home-option-title">View Map</div>
       <div class="home-option-desc">Show the battle map on the table</div>
     </button>
+    <button class="home-option-btn" data-option="bastion">
+      <div class="home-option-title">Bastion</div>
+      <div class="home-option-desc">Build and view your party's bastion</div>
+    </button>
   </div>
 
   <button type="button" class="theme-toggle-btn" id="btn-theme-toggle">🎨 Theme</button>
@@ -120,6 +124,19 @@
       <button class="btn" id="btn-map-back">Back</button>
     </div>
     <div class="footer-line" id="map-home-error"></div>
+  </div>
+
+  <div class="panel home-panel" id="panel-bastion" style="display:none;">
+    <div class="section-title">Bastion</div>
+    <div class="wizard-field">
+      <label>Campaign</label>
+      <select id="bastion-campaign-select"><option value="">— choose —</option></select>
+    </div>
+    <div class="roster-toolbar">
+      <button class="btn" id="btn-bastion-go">Open Bastion</button>
+      <button class="btn" id="btn-bastion-back">Back</button>
+    </div>
+    <div class="footer-line" id="bastion-home-error"></div>
   </div>
 
   <a class="home-admin-link" href="admin.html">Server Admin</a>

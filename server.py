@@ -19,9 +19,13 @@ CAMPAIGN_DIR = os.path.join(BASE_DIR, "campaigns")
 DM_NOTES_DIR = os.path.join(BASE_DIR, "dm-notes")
 DM_STATBLOCKS_DIR = os.path.join(BASE_DIR, "dm-statblocks")
 DM_TREASURE_DIR = os.path.join(BASE_DIR, "dm-treasure")
+DM_SESSIONS_DIR = os.path.join(BASE_DIR, "dm-sessions")
+DM_WORLD_DIR = os.path.join(BASE_DIR, "dm-world")
 DM_BOARD_MAP_DIR = os.path.join(BASE_DIR, "dm-board-map")
 DM_BOARD_TOKENS_DIR = os.path.join(BASE_DIR, "dm-board-tokens")
 DM_BOARD_SHAPES_DIR = os.path.join(BASE_DIR, "dm-board-shapes")
+BASTION_DIR = os.path.join(BASE_DIR, "bastion")
+CAMPAIGN_SETTINGS_DIR = os.path.join(BASE_DIR, "campaign-settings")
 DM_AUTH_DIR = os.path.join(BASE_DIR, "dm-auth")
 INBOX_DIR = os.path.join(BASE_DIR, "inbox")
 CAMPAIGNS_REGISTRY_FILE = os.path.join(BASE_DIR, "campaigns-registry.json")
@@ -76,8 +80,24 @@ def dm_statblocks_path(slug):
     return os.path.join(DM_STATBLOCKS_DIR, slug + ".json")
 
 
+def bastion_path(slug):
+    return os.path.join(BASTION_DIR, slug + ".json")
+
+
+def campaign_settings_path(slug):
+    return os.path.join(CAMPAIGN_SETTINGS_DIR, slug + ".json")
+
+
 def dm_treasure_path(slug):
     return os.path.join(DM_TREASURE_DIR, slug + ".json")
+
+
+def dm_sessions_path(slug):
+    return os.path.join(DM_SESSIONS_DIR, slug + ".json")
+
+
+def dm_world_path(slug):
+    return os.path.join(DM_WORLD_DIR, slug + ".json")
 
 
 def dm_board_map_path(slug):
@@ -220,6 +240,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             slug = path[len("/api/dm/notes/"):]
             self.handle_get_dm_notes(slug)
             return
+        if path.startswith("/api/campaign/") and path.endswith("/bastion"):
+            slug = path[len("/api/campaign/"):-len("/bastion")]
+            self.handle_get_bastion(slug)
+            return
+        if path.startswith("/api/campaign/") and path.endswith("/settings"):
+            slug = path[len("/api/campaign/"):-len("/settings")]
+            self.handle_get_campaign_settings(slug)
+            return
         if path.startswith("/api/dm/statblocks/") and path.endswith("/wait"):
             slug = path[len("/api/dm/statblocks/"):-len("/wait")]
             query = parse_qs(parsed.query)
@@ -238,6 +266,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path.startswith("/api/dm/treasure/"):
             slug = path[len("/api/dm/treasure/"):]
             self.handle_get_dm_treasure(slug)
+            return
+        if path.startswith("/api/dm/sessions/"):
+            slug = path[len("/api/dm/sessions/"):]
+            self.handle_get_dm_sessions(slug)
+            return
+        if path.startswith("/api/dm/world/"):
+            slug = path[len("/api/dm/world/"):]
+            self.handle_get_dm_world(slug)
             return
         if path.startswith("/api/inbox/"):
             char_id = path[len("/api/inbox/"):]
@@ -294,6 +330,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             slug = self.path[len("/api/dm/notes/"):]
             self.handle_post_dm_notes(slug)
             return
+        if self.path.startswith("/api/campaign/") and self.path.endswith("/bastion"):
+            slug = self.path[len("/api/campaign/"):-len("/bastion")]
+            self.handle_post_bastion(slug)
+            return
+        if self.path.startswith("/api/campaign/") and self.path.endswith("/settings"):
+            slug = self.path[len("/api/campaign/"):-len("/settings")]
+            self.handle_post_campaign_settings(slug)
+            return
         if self.path.startswith("/api/dm/statblocks/"):
             slug = self.path[len("/api/dm/statblocks/"):]
             self.handle_post_dm_statblocks(slug)
@@ -301,6 +345,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith("/api/dm/treasure/"):
             slug = self.path[len("/api/dm/treasure/"):]
             self.handle_post_dm_treasure(slug)
+            return
+        if self.path.startswith("/api/dm/sessions/"):
+            slug = self.path[len("/api/dm/sessions/"):]
+            self.handle_post_dm_sessions(slug)
+            return
+        if self.path.startswith("/api/dm/world/"):
+            slug = self.path[len("/api/dm/world/"):]
+            self.handle_post_dm_world(slug)
             return
         if self.path.startswith("/api/inbox/") and self.path.endswith("/claim"):
             char_id = self.path[len("/api/inbox/"):-len("/claim")]
@@ -378,7 +430,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         items = read_campaigns_registry()
         items = [c for c in items if c.get("slug") != slug]
         write_campaigns_registry(items)
-        for path in (dm_auth_path(slug), os.path.join(CAMPAIGN_DIR, slug + ".json"), os.path.join(DM_NOTES_DIR, slug + ".json"), dm_statblocks_path(slug), dm_treasure_path(slug), dm_board_map_path(slug), dm_board_tokens_path(slug), dm_board_shapes_path(slug)):
+        for path in (dm_auth_path(slug), os.path.join(CAMPAIGN_DIR, slug + ".json"), os.path.join(DM_NOTES_DIR, slug + ".json"), dm_statblocks_path(slug), dm_treasure_path(slug), dm_sessions_path(slug), dm_world_path(slug), bastion_path(slug), campaign_settings_path(slug), dm_board_map_path(slug), dm_board_tokens_path(slug), dm_board_shapes_path(slug)):
             if os.path.exists(path):
                 os.remove(path)
         for token in [t for t, s in dm_tokens.items() if s == slug]:
@@ -1041,6 +1093,131 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(parsed, f, indent=2)
         self.write_json(200, {"ok": True, "updatedAt": os.path.getmtime(path)})
+
+    def handle_get_campaign_settings(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        path = campaign_settings_path(slug)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                body = f.read()
+            self.write_raw_json(200, body)
+        else:
+            self.write_raw_json(200, json.dumps({"bastionEnabled": False}))
+
+    def handle_post_campaign_settings(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        if not self.check_dm_token(slug):
+            self.send_error(401, "Not authorized")
+            return
+        body = self.read_json_body()
+        if not isinstance(body, dict):
+            self.send_error(400, "Invalid JSON")
+            return
+        os.makedirs(CAMPAIGN_SETTINGS_DIR, exist_ok=True)
+        path = campaign_settings_path(slug)
+        existing = {}
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            except Exception:
+                existing = {}
+        existing["bastionEnabled"] = bool(body.get("bastionEnabled"))
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2)
+        self.write_json(200, {"ok": True})
+
+    def handle_get_bastion(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        path = bastion_path(slug)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                body = f.read()
+            self.write_raw_json(200, body, updated_at=os.path.getmtime(path))
+        else:
+            self.write_raw_json(200, json.dumps({}), updated_at=0)
+
+    def handle_post_bastion(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        body = self.read_json_body()
+        if not isinstance(body, dict):
+            self.send_error(400, "Invalid JSON")
+            return
+        os.makedirs(BASTION_DIR, exist_ok=True)
+        path = bastion_path(slug)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(body, f, indent=2)
+        self.write_json(200, {"ok": True, "updatedAt": os.path.getmtime(path)})
+
+    def handle_get_dm_sessions(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        if not self.check_dm_token(slug):
+            self.send_error(401, "Not authorized")
+            return
+        path = dm_sessions_path(slug)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                body = f.read()
+            self.write_raw_json(200, body)
+        else:
+            self.write_raw_json(200, json.dumps({"sessions": [], "activeId": None}))
+
+    def handle_post_dm_sessions(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        if not self.check_dm_token(slug):
+            self.send_error(401, "Not authorized")
+            return
+        body = self.read_json_body()
+        if not isinstance(body, dict):
+            self.send_error(400, "Invalid JSON")
+            return
+        os.makedirs(DM_SESSIONS_DIR, exist_ok=True)
+        with open(dm_sessions_path(slug), "w", encoding="utf-8") as f:
+            json.dump(body, f, indent=2)
+        self.write_json(200, {"ok": True})
+
+    def handle_get_dm_world(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        if not self.check_dm_token(slug):
+            self.send_error(401, "Not authorized")
+            return
+        path = dm_world_path(slug)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                body = f.read()
+            self.write_raw_json(200, body)
+        else:
+            self.write_raw_json(200, json.dumps({"sections": []}))
+
+    def handle_post_dm_world(self, slug):
+        if not CAMPAIGN_SLUG_RE.match(slug):
+            self.send_error(400, "Invalid campaign slug")
+            return
+        if not self.check_dm_token(slug):
+            self.send_error(401, "Not authorized")
+            return
+        body = self.read_json_body()
+        if not isinstance(body, dict):
+            self.send_error(400, "Invalid JSON")
+            return
+        os.makedirs(DM_WORLD_DIR, exist_ok=True)
+        with open(dm_world_path(slug), "w", encoding="utf-8") as f:
+            json.dump(body, f, indent=2)
+        self.write_json(200, {"ok": True})
 
     def handle_get_dm_treasure(self, slug):
         if not CAMPAIGN_SLUG_RE.match(slug):

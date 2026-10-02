@@ -55,6 +55,11 @@
                   <div class="lbl">Swim</div>
                   <input class="misc-sm" type="number" data-bind="combat.swimSpeedMod" placeholder="0" title="Swim speed modifier — adjusts the field above">
                 </div>
+                <div class="speed-col extra-speed-climb">
+                  <input type="number" class="no-spin" data-bind="combat.climbSpeed" title="Climbing speed (ft)">
+                  <div class="lbl">Climb</div>
+                  <input class="misc-sm" type="number" data-bind="combat.climbSpeedMod" placeholder="0" title="Climb speed modifier — adjusts the field above">
+                </div>
               </div>
               <span class="effect-badge" id="speed-effect-badge" style="display:none;"></span>
             </div>
@@ -208,6 +213,7 @@
     <button class="tab-btn view-combat-only" data-tab="summons">Summons</button>
     <button class="tab-btn view-combat-only" data-tab="battlemap">Battle Map</button>
     <button class="tab-btn view-noncombat-only" data-tab="inventory">Inventory</button>
+    <button class="tab-btn view-noncombat-only" data-tab="bastion">Bastion</button>
     <button class="tab-btn view-noncombat-only" data-tab="features">Features</button>
     <button class="tab-btn view-noncombat-only" data-tab="details">Details</button>
     <button class="tab-btn" data-tab="notes">Notes</button>
@@ -342,6 +348,11 @@
         <button class="btn add-row-btn" id="add-equipment">+ Add Item</button>
         <div class="footer-line" id="total-weight-line">Total weight: <b id="total-weight">0 lb</b></div>
       </div>
+    </section>
+
+    <section class="tab-panel view-noncombat-only" id="tab-bastion">
+      <div class="footer-line bas-hint" id="bastion-tab-hint" style="display:none;">Set a Campaign in Details to open your party's bastion.</div>
+      <iframe class="bas-frame" id="bastion-frame" title="Bastion" style="display:none;"></iframe>
     </section>
 
     <section class="tab-panel view-noncombat-only" id="tab-features">

@@ -5,8 +5,9 @@ A self-hosted D&D 5e character sheet and virtual tabletop for running games with
 ## Features
 
 - Full character sheet with an effects engine, character creator wizard, and inventory/currency tracking
-- DM screen: initiative tracker, monster/NPC stat block importer, notes, and loot containers you can hand out to players
+- DM screen: initiative tracker, monster/NPC stat block importer, notes, loot containers you can hand out to players, a session planner (sections and rooms/scenes you can check off during play), and a customizable world building page
 - Live battle map: draggable tokens sized by creature, ruler/circle/cone templates, tile marks and pings — synced instantly between the DM and every player
+- Bastion builder: shared multi-floor grid editor with rooms, corridors, stairs and a per-room info panel — any player in the campaign can build it, synced live, gated behind a DM on/off switch
 - Everything syncs live across devices on your network with no manual refreshing
 
 ## Running it

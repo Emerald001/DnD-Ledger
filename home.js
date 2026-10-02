@@ -78,6 +78,21 @@ function populateMapCampaignSelect(){
     sorted.map(function(c){ return '<option value="'+esc(c.slug)+'">'+esc(c.name)+'</option>'; }).join("");
 }
 
+function populateBastionCampaignSelect(){
+  var sel = document.getElementById("bastion-campaign-select");
+  var sorted = homeCampaigns.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+  sel.innerHTML = '<option value="">— choose —</option>' +
+    sorted.map(function(c){ return '<option value="'+esc(c.slug)+'">'+esc(c.name)+'</option>'; }).join("");
+}
+
+function goBastion(){
+  var slug = document.getElementById("bastion-campaign-select").value;
+  var errEl = document.getElementById("bastion-home-error");
+  if(!slug){ errEl.textContent = "Choose a campaign."; return; }
+  errEl.textContent = "";
+  location.href = "bastion.html?campaign="+encodeURIComponent(slug);
+}
+
 function goViewMap(){
   var slug = document.getElementById("map-campaign-select").value;
   var errEl = document.getElementById("map-home-error");
@@ -270,6 +285,7 @@ function init(){
   loadHomeCampaigns().then(function(){
     populateDmCampaignSelect();
     populateMapCampaignSelect();
+    populateBastionCampaignSelect();
   });
 
   document.querySelectorAll(".home-option-btn").forEach(function(btn){
@@ -280,6 +296,8 @@ function init(){
   document.getElementById("btn-dm-back").addEventListener("click", function(){ resetDmHomeForm(); backToOptions(); });
   document.getElementById("btn-map-back").addEventListener("click", backToOptions);
   document.getElementById("btn-map-go").addEventListener("click", goViewMap);
+  document.getElementById("btn-bastion-back").addEventListener("click", backToOptions);
+  document.getElementById("btn-bastion-go").addEventListener("click", goBastion);
 
   document.getElementById("btn-new-mode-wizard").addEventListener("click", function(){ setNewPlayerMode("wizard"); });
   document.getElementById("btn-new-mode-manual").addEventListener("click", function(){ setNewPlayerMode("manual"); });
