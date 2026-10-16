@@ -7,6 +7,7 @@ cleanly kills it - no more orphaned python.exe processes left running after
 a terminal window gets closed.
 """
 
+import json
 import os
 import queue
 import subprocess
@@ -14,11 +15,30 @@ import sys
 import threading
 import tkinter as tk
 import webbrowser
-from tkinter import scrolledtext
+from tkinter import filedialog, scrolledtext
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SERVER_SCRIPT = os.path.join(BASE_DIR, "server.py")
+SETTINGS_FILE = os.path.join(BASE_DIR, "server-manager.json")
 DEFAULT_PORT = 8000
+DEFAULT_DATA_DIR = os.path.abspath(os.environ.get("DND_LEDGER_DATA") or os.path.join(BASE_DIR, os.pardir, "DnD-Ledger-Data"))
+
+
+def load_settings():
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_settings(settings):
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+    except Exception:
+        pass
 
 
 class ServerManager:
@@ -26,6 +46,7 @@ class ServerManager:
         self.root = root
         self.proc = None
         self.log_queue = queue.Queue()
+        self.settings = load_settings()
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.after(150, self._poll)
@@ -43,9 +64,20 @@ class ServerManager:
         self.status_label.pack(side="left")
 
         tk.Label(top, text="Port:").pack(side="left", padx=(16, 4))
-        self.port_var = tk.StringVar(value=str(DEFAULT_PORT))
+        self.port_var = tk.StringVar(value=str(self.settings.get("port") or DEFAULT_PORT))
         self.port_entry = tk.Entry(top, textvariable=self.port_var, width=6)
         self.port_entry.pack(side="left")
+
+        data_row = tk.Frame(self.root, padx=8)
+        data_row.pack(fill="x")
+        tk.Label(data_row, text="Save data folder:").pack(side="left")
+        self.data_var = tk.StringVar(value=self.settings.get("dataDir") or DEFAULT_DATA_DIR)
+        self.data_entry = tk.Entry(data_row, textvariable=self.data_var, state="readonly")
+        self.data_entry.pack(side="left", fill="x", expand=True, padx=4)
+        self.data_btn = tk.Button(data_row, text="Browse…", width=10, command=self.choose_data_dir)
+        self.data_btn.pack(side="left", padx=2)
+        self.open_data_btn = tk.Button(data_row, text="Open Folder", width=12, command=self.open_data_dir)
+        self.open_data_btn.pack(side="left", padx=2)
 
         btns = tk.Frame(self.root, padx=8)
         btns.pack(fill="x")
@@ -88,6 +120,7 @@ class ServerManager:
         self.status_label.configure(fg="#228822")
         self.start_btn.configure(state="disabled")
         self.port_entry.configure(state="disabled")
+        self.data_btn.configure(state="disabled")
         self.stop_btn.configure(state="normal")
         self.restart_btn.configure(state="normal")
         self.browser_btn.configure(state="normal")
@@ -97,22 +130,48 @@ class ServerManager:
         self.status_label.configure(fg="#aa3333")
         self.start_btn.configure(state="normal")
         self.port_entry.configure(state="normal")
+        self.data_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
         self.restart_btn.configure(state="disabled")
         self.browser_btn.configure(state="disabled")
+
+    def choose_data_dir(self):
+        current = self.data_var.get()
+        initial = current if os.path.isdir(current) else os.path.dirname(current)
+        chosen = filedialog.askdirectory(parent=self.root, title="Choose save data folder", initialdir=initial or BASE_DIR)
+        if not chosen:
+            return
+        self.data_var.set(os.path.abspath(chosen))
+        self.settings["dataDir"] = self.data_var.get()
+        save_settings(self.settings)
+
+    def open_data_dir(self):
+        path = self.data_var.get()
+        os.makedirs(path, exist_ok=True)
+        if os.name == "nt":
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
 
     def start_server(self):
         if self.proc is not None:
             return
         port = self.port_var.get().strip() or str(DEFAULT_PORT)
+        self.settings["port"] = port
+        self.settings["dataDir"] = self.data_var.get()
+        save_settings(self.settings)
         self.log_widget.configure(state="normal")
         self.log_widget.delete("1.0", "end")
         self.log_widget.configure(state="disabled")
         creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        env = dict(os.environ, DND_LEDGER_DATA=self.data_var.get())
         try:
             self.proc = subprocess.Popen(
                 [sys.executable, "-u", SERVER_SCRIPT, port],
                 cwd=BASE_DIR,
+                env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

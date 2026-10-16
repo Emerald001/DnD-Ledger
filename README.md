@@ -28,6 +28,20 @@ python server.py
 
 Then open `http://localhost:8000`. Plain Python standard library either way — no dependencies to install.
 
+## Save data
+
+All save data (characters, campaigns, DM screen data, etc.) lives in its own folder, separate from the app, so it can be kept in its own Git repo and synced between machines. By default that is a `DnD-Ledger-Data` folder next to this one:
+
+```
+UnityProjects/
+├── DnD-Ledger/        ← this app
+└── DnD-Ledger-Data/   ← your saves
+```
+
+To use a different location, click **Browse…** next to "Save data folder" in the Server Manager window. The choice is remembered per machine (in `server-manager.json`, which is not committed). Without the GUI, set the `DND_LEDGER_DATA` environment variable to the folder you want before running `server.py`.
+
+On first start, any save data still inside the app folder (from older versions) is moved into the data folder automatically. Nothing is overwritten: if a file or folder already exists in the data folder, the old copy is left where it was and the server log says so.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE) — free to use, modify, and contribute to for any noncommercial purpose. Reselling it or offering it as a paid product/service is not permitted.

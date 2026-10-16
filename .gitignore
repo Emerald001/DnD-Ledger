@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+server-manager.json
 
 # Generated runtime data (per-player characters, campaigns, DM screen data)
 characters/

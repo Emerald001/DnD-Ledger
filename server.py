@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import socket
 import sys
 import threading
@@ -13,23 +14,30 @@ from urllib.parse import urlsplit, parse_qs
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CHAR_DIR = os.path.join(BASE_DIR, "characters")
-TRASH_DIR = os.path.join(BASE_DIR, "trash")
-CAMPAIGN_DIR = os.path.join(BASE_DIR, "campaigns")
-DM_NOTES_DIR = os.path.join(BASE_DIR, "dm-notes")
-DM_STATBLOCKS_DIR = os.path.join(BASE_DIR, "dm-statblocks")
-DM_TREASURE_DIR = os.path.join(BASE_DIR, "dm-treasure")
-DM_SESSIONS_DIR = os.path.join(BASE_DIR, "dm-sessions")
-DM_WORLD_DIR = os.path.join(BASE_DIR, "dm-world")
-DM_BOARD_MAP_DIR = os.path.join(BASE_DIR, "dm-board-map")
-DM_BOARD_TOKENS_DIR = os.path.join(BASE_DIR, "dm-board-tokens")
-DM_BOARD_SHAPES_DIR = os.path.join(BASE_DIR, "dm-board-shapes")
-BASTION_DIR = os.path.join(BASE_DIR, "bastion")
-CAMPAIGN_SETTINGS_DIR = os.path.join(BASE_DIR, "campaign-settings")
-DM_AUTH_DIR = os.path.join(BASE_DIR, "dm-auth")
-INBOX_DIR = os.path.join(BASE_DIR, "inbox")
-CAMPAIGNS_REGISTRY_FILE = os.path.join(BASE_DIR, "campaigns-registry.json")
-LEGACY_FILE = os.path.join(BASE_DIR, "character-data.json")
+DATA_DIR = os.path.abspath(os.environ.get("DND_LEDGER_DATA") or os.path.join(BASE_DIR, os.pardir, "DnD-Ledger-Data"))
+DATA_ENTRIES = (
+    "characters", "trash", "campaigns", "dm-notes", "dm-statblocks", "dm-treasure",
+    "dm-sessions", "dm-world", "dm-board-map", "dm-board-tokens", "dm-board-shapes",
+    "bastion", "campaign-settings", "dm-auth", "inbox", "campaigns-registry.json",
+    "character-data.json",
+)
+CHAR_DIR = os.path.join(DATA_DIR, "characters")
+TRASH_DIR = os.path.join(DATA_DIR, "trash")
+CAMPAIGN_DIR = os.path.join(DATA_DIR, "campaigns")
+DM_NOTES_DIR = os.path.join(DATA_DIR, "dm-notes")
+DM_STATBLOCKS_DIR = os.path.join(DATA_DIR, "dm-statblocks")
+DM_TREASURE_DIR = os.path.join(DATA_DIR, "dm-treasure")
+DM_SESSIONS_DIR = os.path.join(DATA_DIR, "dm-sessions")
+DM_WORLD_DIR = os.path.join(DATA_DIR, "dm-world")
+DM_BOARD_MAP_DIR = os.path.join(DATA_DIR, "dm-board-map")
+DM_BOARD_TOKENS_DIR = os.path.join(DATA_DIR, "dm-board-tokens")
+DM_BOARD_SHAPES_DIR = os.path.join(DATA_DIR, "dm-board-shapes")
+BASTION_DIR = os.path.join(DATA_DIR, "bastion")
+CAMPAIGN_SETTINGS_DIR = os.path.join(DATA_DIR, "campaign-settings")
+DM_AUTH_DIR = os.path.join(DATA_DIR, "dm-auth")
+INBOX_DIR = os.path.join(DATA_DIR, "inbox")
+CAMPAIGNS_REGISTRY_FILE = os.path.join(DATA_DIR, "campaigns-registry.json")
+LEGACY_FILE = os.path.join(DATA_DIR, "character-data.json")
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 CAMPAIGN_SLUG_RE = re.compile(r"^[a-z0-9-]{1,64}$")
 WAIT_TIMEOUT = 20
@@ -1355,6 +1363,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         print("[%s] %s" % (self.log_date_time_string(), fmt % args))
 
 
+def migrate_into_data_dir():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if os.path.normcase(DATA_DIR) == os.path.normcase(BASE_DIR):
+        return
+    for name in DATA_ENTRIES:
+        src = os.path.join(BASE_DIR, name)
+        dest = os.path.join(DATA_DIR, name)
+        if not os.path.exists(src):
+            continue
+        if os.path.exists(dest):
+            print("Left %s in place: %s already exists in the data folder" % (src, name))
+            continue
+        shutil.move(src, dest)
+        print("Moved %s into %s" % (name, DATA_DIR))
+
+
 def migrate_legacy_file():
     os.makedirs(CHAR_DIR, exist_ok=True)
     default_path = char_path("default")
@@ -1403,6 +1427,7 @@ def main():
         print("Stop it first (Ctrl+C in its window, or end its python.exe process")
         print("in Task Manager) before starting a new one.")
         sys.exit(1)
+    migrate_into_data_dir()
     migrate_legacy_file()
     load_persisted_dm_tokens()
     server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
@@ -1410,7 +1435,7 @@ def main():
     print("Character Ledger server running.")
     print("On this PC:      http://localhost:%d" % PORT)
     print("On your tablet:  http://%s:%d" % (ip, PORT))
-    print("Characters saved in: %s" % CHAR_DIR)
+    print("Save data folder: %s" % DATA_DIR)
     print("Press Ctrl+C to stop.")
     try:
         server.serve_forever()
