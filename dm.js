@@ -571,6 +571,7 @@ function dmSwitchView(view){
   document.getElementById("dmscreen-view-bastion").style.display = view==="bastion" ? "" : "none";
   document.getElementById("dmscreen-view-sessions").style.display = view==="sessions" ? "" : "none";
   document.getElementById("dmscreen-view-world").style.display = view==="world" ? "" : "none";
+  document.getElementById("dmscreen-view-books").style.display = view==="books" ? "" : "none";
   if(view==="bastion"){
     dmPauseBackgroundPolling();
     if(!dmBastionSettingsLoaded){ dmBastionSettingsLoaded = true; dmLoadBastionSettings(); }
@@ -584,6 +585,43 @@ function dmSwitchView(view){
   }
   if(view==="sessions" && !spLoaded){ spLoaded = true; spLoad(); }
   if(view==="world" && !wbLoaded){ wbLoaded = true; wbLoad(); }
+  if(view==="books" && !dmBooksLoaded){ dmBooksLoaded = true; dmLoadBooks(); }
+}
+
+/* ==================== Books ==================== */
+// Which rulebooks (BOOKS in rules-data.js) players may use in this campaign. Stored in campaign settings.
+var dmBooksLoaded = false;
+var dmBooks = ["PHB'24"];
+function dmLoadBooks(){
+  if(!dmCampaignSlug) return;
+  fetch("/api/campaign/"+encodeURIComponent(dmCampaignSlug)+"/settings", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(data){
+    dmBooks = (data && Array.isArray(data.books)) ? data.books : ["PHB'24"];
+    dmRenderBooks();
+  }).catch(function(){ dmRenderBooks(); });
+}
+function dmRenderBooks(){
+  var el = document.getElementById("dm-books-list");
+  el.innerHTML = BOOKS.map(function(b){
+    var on = b.core || dmBooks.indexOf(b.id)!==-1;
+    return '<label class="settings-row"><input type="checkbox" data-book="'+esc(b.id)+'"'+(on?" checked":"")+(b.core?" disabled":"")+'>'+
+      '<span class="settings-row-title">'+esc(b.name)+(b.core ? " (always on)" : "")+'</span></label>';
+  }).join("");
+  el.querySelectorAll("input[data-book]").forEach(function(box){
+    box.addEventListener("change", function(){
+      var id = box.dataset.book;
+      dmBooks = dmBooks.filter(function(x){ return x!==id; });
+      if(box.checked) dmBooks.push(id);
+      dmSaveBooks();
+    });
+  });
+}
+function dmSaveBooks(){
+  if(!dmCampaignSlug || !dmToken) return;
+  var status = document.getElementById("dm-books-status");
+  fetch("/api/campaign/"+encodeURIComponent(dmCampaignSlug)+"/settings", {
+    method:"POST", headers:{"Content-Type":"application/json","X-DM-Token":dmToken}, body:JSON.stringify({books:dmBooks})
+  }).then(function(r){ status.textContent = r.ok ? "Saved." : "Couldn't save (are you logged in as DM?)."; })
+    .catch(function(){ status.textContent = "Couldn't save."; });
 }
 
 /* ==================== Session Planner ==================== */

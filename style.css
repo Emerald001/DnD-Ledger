@@ -1155,6 +1155,14 @@ body.view-mode-noncombat .view-all-only{display:none;}
 .wizard-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-4);}
 @media (max-width:520px){.wizard-grid{grid-template-columns:1fr;}}
 .wizard-field{display:flex;flex-direction:column;gap:4px;margin-bottom:var(--sp-3);}
+.wizard-sections{display:flex;flex-direction:column;margin-bottom:var(--sp-4);}
+.wizard-section{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);}
+.wizard-section:first-child{padding-top:0;}
+.wizard-section:last-child{border-bottom:none;}
+.wizard-section-title{font-family:Georgia,"Iowan Old Style",serif;font-size:14px;font-weight:700;color:var(--brass-bright);margin-bottom:4px;}
+.wizard-section-desc{color:var(--parchment-dim);font-size:12px;line-height:1.45;}
+.wizard-section-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--sp-3);margin-top:var(--sp-3);}
+.wizard-section-fields .wizard-field{margin-bottom:0;}
 .wizard-field label{font-size:10px;color:var(--parchment-dim);letter-spacing:0.05em;text-transform:uppercase;}
 .wizard-field input,.wizard-field textarea{
   width:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);

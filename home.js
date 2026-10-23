@@ -209,6 +209,14 @@ function goNewPlayer(){
   location.href = url;
 }
 
+function goExistingPlayerNewCharacter(){
+  var player = document.getElementById("existing-player-select").value;
+  var errEl = document.getElementById("existing-player-error");
+  if(!player){ errEl.textContent = "Choose a player first."; return; }
+  errEl.textContent = "";
+  location.href = "character-ledger.html?player="+encodeURIComponent(player)+"&startWizard=1";
+}
+
 function goExistingPlayer(){
   var player = document.getElementById("existing-player-select").value;
   var charId = document.getElementById("existing-character-select").value;
@@ -306,6 +314,7 @@ function init(){
 
   document.getElementById("existing-player-select").addEventListener("change", function(e){ populateExistingCharacterSelect(e.target.value); });
   document.getElementById("btn-existing-go").addEventListener("click", goExistingPlayer);
+  document.getElementById("btn-existing-new").addEventListener("click", goExistingPlayerNewCharacter);
 
   document.getElementById("btn-dm-continue").addEventListener("click", dmSubmitHomeLogin);
   document.getElementById("dm-campaign-select").addEventListener("change", onDmCampaignChange);

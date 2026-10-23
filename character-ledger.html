@@ -26,7 +26,7 @@
       <div class="dashboard-grid">
         <div class="dash-left">
           <div class="meta-compact view-noncombat-only">
-            <div class="field-sm"><label>Race</label><input list="dl-races" data-bind="meta.race"></div>
+            <div class="field-sm"><label>Species</label><input list="dl-races" data-bind="meta.race"></div>
             <div class="field-sm"><label>Background</label><input list="dl-backgrounds" data-bind="meta.background"></div>
             <div class="field-sm"><label>Class</label><div class="field-sm-display" id="class-summary-display" title="Edit classes and levels in the Details tab">—</div></div>
             <div class="field-sm"><label>Level</label><div class="level-display-row"><div class="field-sm-display" id="level-summary-display" title="Total level across all classes">1</div><button class="btn btn-level-up" id="btn-level-up" title="Level up a class with guided HP, ASI/feat, and feature prompts">Level Up</button></div></div>
@@ -396,6 +396,7 @@
             <div class="field"><label>Experience Points</label><input type="number" min="0" data-bind="meta.xp"></div>
             <div class="field"><label>Campaign</label><select id="meta-campaign-select" data-bind="meta.campaign" title="Characters sharing a campaign can be added to each other's Initiative Tracker"></select></div>
             <div class="field"><label>Size</label><select id="meta-size-select" data-bind="meta.size" title="Determines your token's size on the Battle Map"></select></div>
+            <div class="field"><label>Senses</label><input data-bind="meta.senses" placeholder="e.g. Darkvision 60 ft"></div>
             <div class="field" style="grid-column:1 / -1;">
               <label>Map Color <span class="footer-line" style="margin:0;display:inline;">— used for anything you draw on the Battle Map (rulers, circles, cones), so others can tell who drew what</span></label>
               <div class="player-color-swatches" id="player-color-swatches"></div>
@@ -455,10 +456,12 @@
 </div>
 
 <datalist id="dl-classes"></datalist>
+<datalist id="dl-subclasses"></datalist>
 <datalist id="dl-races"></datalist>
 <datalist id="dl-backgrounds"></datalist>
 <datalist id="dl-alignments"></datalist>
 
+<script src="rules-data.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

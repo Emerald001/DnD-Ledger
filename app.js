@@ -38,7 +38,7 @@ var SETTINGS_DEFS = [
 ];
 var EFFECT_TARGETS = [["ac","Armor Class","Combat"],["hpMax","Max HP","Combat"],["speed","Speed","Combat"],["initiative","Initiative","Combat"]]
   .concat([["spellDC","Spell Save DC","Spellcasting"],["spellAttack","Spell Attack Roll","Spellcasting"]])
-  .concat([["saveAll","All Saving Throws","General"],["skillAll","All Skill Checks","General"],["profBonus","Proficiency Bonus","General"]])
+  .concat([["saveAll","All Saving Throws","General"],["skillAll","All Skill Checks","General"],["profBonus","Proficiency Bonus","General"],["halfProfSkills","Half Proficiency on Unproficient Skills","General"]])
   .concat(ABILITIES.map(function(a){ return ["ability."+a[0], a[1]+" Score", "Ability Scores"]; }))
   .concat(ABILITIES.map(function(a){ return ["save."+a[0], a[1]+" Save Bonus", "Saving Throws"]; }))
   .concat(ABILITIES.map(function(a){ return ["saveProficiency."+a[0], a[1]+" Save Proficiency", "Saving Throws"]; }))
@@ -50,8 +50,7 @@ var EFFECT_TARGETS = [["ac","Armor Class","Combat"],["hpMax","Max HP","Combat"],
 var EFFECT_TYPES = [["bonus","Bonus (+/-)"],["set","Set To"],["grant","Grant"],["note","Note Only"]];
 var EFFECT_CONDITIONS = [["always","Always"],["equipped","While Equipped"],["attuned","While Attuned"],["manual","Manual Toggle"]];
 var VALUE_SOURCES = [["custom","Custom Value"],["pb","Proficiency Bonus"],["level","Character Level"]];
-var FEATURE_SOURCES = ["Feat","Racial Trait","Class Feature","Background","Other"];
-var CLASSES = ["Artificer","Barbarian","Bard","Cleric","Druid","Fighter","Monk","Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"];
+var FEATURE_SOURCES = ["Feat","Species Trait","Racial Trait","Class Feature","Subclass Feature","Background","Other"];
 var SIZE_OPTIONS = [["tiny","Tiny",0.5],["small","Small",1],["medium","Medium",1],["large","Large",2],["huge","Huge",3],["gargantuan","Gargantuan",4]];
 function sizeGridSpan(size){
   var found = SIZE_OPTIONS.find(function(s){ return s[0]===size; });
@@ -60,48 +59,27 @@ function sizeGridSpan(size){
 function sizeSelectOptionsHtml(selected){
   return SIZE_OPTIONS.map(function(s){ return '<option value="'+s[0]+'"'+(s[0]===(selected||"medium")?" selected":"")+'>'+s[1]+'</option>'; }).join("");
 }
-var RACES = ["Aasimar","Dragonborn","Dwarf","Elf","Firbolg","Gnome","Goliath","Half-Elf","Half-Orc","Halfling","Human","Orc","Tabaxi","Tiefling"];
-var BACKGROUNDS = ["Acolyte","Charlatan","Criminal","Entertainer","Folk Hero","Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier","Urchin"];
+// Species and background data live in rules-data.js.
+var RACES = Object.keys(SPECIES_DATA);
 var ALIGNMENTS = ["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"];
-var BACKGROUND_ABILITIES = {
-  Acolyte:["int","wis","cha"],
-  Charlatan:["dex","con","cha"],
-  Criminal:["dex","con","int"],
-  Entertainer:["str","dex","cha"],
-  "Folk Hero":["str","con","wis"],
-  "Guild Artisan":["str","dex","int"],
-  Hermit:["con","wis","cha"],
-  Noble:["str","int","cha"],
-  Outlander:["str","con","wis"],
-  Sage:["con","int","wis"],
-  Sailor:["str","dex","wis"],
-  Soldier:["str","dex","con"],
-  Urchin:["dex","con","int"]
-};
+var BACKGROUNDS = Object.keys(BACKGROUND_DATA);
+var BACKGROUND_ABILITIES = {};
+BACKGROUNDS.forEach(function(name){ BACKGROUND_ABILITIES[name] = BACKGROUND_DATA[name].abilities; });
 
-var CLASS_SAVES = {
-  Barbarian:["str","con"], Bard:["dex","cha"], Cleric:["wis","cha"], Druid:["int","wis"],
-  Fighter:["str","con"], Monk:["str","dex"], Paladin:["wis","cha"], Ranger:["str","dex"],
-  Rogue:["dex","int"], Sorcerer:["con","cha"], Warlock:["wis","cha"], Wizard:["int","wis"],
-  Artificer:["con","int"]
-};
-var CLASS_SPELL_ABILITY = {
-  Bard:"cha", Cleric:"wis", Druid:"wis", Paladin:"cha", Ranger:"wis",
-  Sorcerer:"cha", Warlock:"cha", Wizard:"int", Artificer:"int"
-};
-var FULL_CASTER_CLASSES = ["Bard","Cleric","Druid","Sorcerer","Wizard"];
-var HALF_CASTER_CLASSES = ["Paladin","Ranger"];
-var FULL_SLOTS = [
-  [2,0,0,0,0,0,0,0,0],[3,0,0,0,0,0,0,0,0],[4,2,0,0,0,0,0,0,0],[4,3,0,0,0,0,0,0,0],
-  [4,3,2,0,0,0,0,0,0],[4,3,3,0,0,0,0,0,0],[4,3,3,1,0,0,0,0,0],[4,3,3,2,0,0,0,0,0],
-  [4,3,3,3,1,0,0,0,0],[4,3,3,3,2,0,0,0,0],[4,3,3,3,2,1,0,0,0],[4,3,3,3,2,1,0,0,0],
-  [4,3,3,3,2,1,1,0,0],[4,3,3,3,2,1,1,0,0],[4,3,3,3,2,1,1,1,0],[4,3,3,3,2,1,1,1,0],
-  [4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]
-];
-var PACT_TABLE = [
-  [1,1],[1,2],[2,2],[2,2],[3,2],[3,2],[4,2],[4,2],[5,2],[5,2],
-  [5,3],[5,3],[5,3],[5,3],[5,3],[5,3],[5,4],[5,4],[5,4],[5,4]
-];
+// Class data lives in rules-data.js; these lookups are derived from it.
+var CLASSES = Object.keys(CLASS_DATA);
+var CLASS_SAVES = {}, CLASS_SPELL_ABILITY = {}, CLASS_HIT_DIE = {};
+// Armor training each class starts with (used to check feat prerequisites).
+var CLASS_ARMOR_TRAINING = {light:[], medium:[], heavy:[], shield:[]};
+CLASSES.forEach(function(name){
+  var c = CLASS_DATA[name];
+  CLASS_SAVES[name] = c.saves;
+  CLASS_HIT_DIE[name] = c.hitDie;
+  if(c.spellAbility) CLASS_SPELL_ABILITY[name] = c.spellAbility;
+  (c.armor||[]).forEach(function(kind){ CLASS_ARMOR_TRAINING[kind].push(name); });
+});
+var FULL_SLOTS = SPELL_SLOTS_BY_CASTER_LEVEL;
+var PACT_TABLE = PACT_MAGIC_TABLE;
 
 function zeroSlots(){ return [0,0,0,0,0,0,0,0,0]; }
 
@@ -118,15 +96,6 @@ function matchClass(str){
   return found || null;
 }
 
-var CLASS_HIT_DIE = {
-  Barbarian:12, Bard:8, Cleric:8, Druid:8, Fighter:10, Monk:8, Paladin:10,
-  Ranger:10, Rogue:8, Sorcerer:6, Warlock:8, Wizard:6, Artificer:8
-};
-var ASI_LEVELS = {
-  Fighter:[4,6,8,12,14,16,19],
-  Rogue:[4,8,10,12,16,19],
-  default:[4,8,12,16,19]
-};
 var STANDARD_ARRAY = [15,14,13,12,10,8];
 
 function totalLevel(){
@@ -140,10 +109,23 @@ function classSummaryText(){
   return parts.join(" / ");
 }
 
+function subclassDataFor(cls, subclass){
+  return (SUBCLASS_DATA[cls]||{})[subclass] || null;
+}
+// Caster type and spellcasting ability of a class row, including subclasses that add spellcasting.
+function classRowCasting(c){
+  var cls = matchClass(c.class);
+  if(!cls) return null;
+  var sub = subclassDataFor(cls, c.subclass);
+  var caster = CLASS_DATA[cls].caster || (sub && sub.caster) || null;
+  var ability = CLASS_DATA[cls].spellAbility || (sub && sub.spellAbility) || null;
+  return caster ? {cls:cls, caster:caster, ability:ability} : null;
+}
 function castingClassesInfo(){
   return (state.meta.classes||[]).map(function(c){
-    return {cls: matchClass(c.class), level: Number(c.level)||0};
-  }).filter(function(x){ return x.cls && CLASS_SPELL_ABILITY[x.cls]; });
+    var casting = classRowCasting(c);
+    return {cls: matchClass(c.class), level: Number(c.level)||0, ability: casting && casting.ability};
+  }).filter(function(x){ return x.cls && x.ability; });
 }
 
 function combinedCasterLevel(){
@@ -152,9 +134,11 @@ function combinedCasterLevel(){
     var cls = matchClass(c.class);
     var lvl = Number(c.level)||0;
     if(!cls) return;
-    if(FULL_CASTER_CLASSES.indexOf(cls)!==-1) total += lvl;
-    else if(HALF_CASTER_CLASSES.indexOf(cls)!==-1) total += Math.floor(lvl/2);
-    else if(cls==="Artificer") total += Math.ceil(lvl/2);
+    var casting = classRowCasting(c);
+    var caster = casting && casting.caster;
+    if(caster==="full") total += lvl;
+    else if(caster==="half") total += Math.ceil(lvl/2);
+    else if(caster==="third") total += Math.ceil(lvl/3);
   });
   return total;
 }
@@ -173,7 +157,7 @@ function autoFillSaves(){
 }
 
 function autoFillSpellAbility(){
-  var abilities = castingClassesInfo().map(function(x){ return CLASS_SPELL_ABILITY[x.cls]; });
+  var abilities = castingClassesInfo().map(function(x){ return x.ability; });
   if(abilities.length && abilities.indexOf(state.spellcasting.ability)===-1){
     state.spellcasting.ability = abilities[0];
   }
@@ -224,6 +208,61 @@ function syncBind(path){
   });
 }
 
+function classLevelOf(cls){
+  return (state.meta.classes||[]).reduce(function(sum, c){ return sum + (matchClass(c.class)===cls ? (Number(c.level)||0) : 0); }, 0);
+}
+function classColumnValue(clsData, column, level){
+  var arr = clsData.columns && clsData.columns[column];
+  return arr ? arr[Math.max(1, Math.min(20, level))-1] : undefined;
+}
+// Fills {Column Name} placeholders in class feature text with the value for that class level.
+function renderClassText(text, clsData, level){
+  return String(text||"").replace(/\{([^}]+)\}/g, function(m, key){
+    var v = classColumnValue(clsData, key, level);
+    return v===undefined ? m : String(v);
+  });
+}
+function classResourceMax(def, clsData, level){
+  var m = def.max;
+  if(m==="pb") return profBonus(totalLevel());
+  if(typeof m==="number") return m;
+  if(m && m.column) return Number(classColumnValue(clsData, m.column, level))||0;
+  if(m && m.byLevel){
+    var best = 0;
+    Object.keys(m.byLevel).forEach(function(k){ if(level>=Number(k)) best = m.byLevel[k]; });
+    return best;
+  }
+  if(m && m.ability) return Math.max(m.min||0, mod(effAbilityScore(m.ability))) * (m.times||1);
+  if(m && m.classLevelTimes) return level*m.classLevelTimes + (m.plus||0);
+  return Number(m)||0;
+}
+function classResourceResetOn(def, level){
+  return (def.resetOnFrom && level>=def.resetOnFrom.level) ? def.resetOnFrom.resetOn : (def.resetOn||"long");
+}
+function classFeatureDef(ref){
+  var source = ref.subclass ? subclassDataFor(ref.class, ref.subclass) : CLASS_DATA[ref.class];
+  return source ? (source.features||[]).find(function(f){ return f.name===ref.name && f.level===ref.level; }) : null;
+}
+// Column values a class (or subclass) feature can scale with: the class's plus the subclass's own.
+function scaleDataFor(cls, subclass){
+  var sub = subclass ? subclassDataFor(cls, subclass) : null;
+  return {columns:Object.assign({}, (CLASS_DATA[cls]||{}).columns, sub && sub.columns)};
+}
+// Keeps class features in step with class level: description placeholders and scaling effects.
+function syncClassFeatures(){
+  (state.features||[]).forEach(function(f){
+    if(!f.classRef) return;
+    var def = classFeatureDef(f.classRef);
+    if(!def) return;
+    var clsData = scaleDataFor(f.classRef.class, f.classRef.subclass), level = classLevelOf(f.classRef.class);
+    if(def.description.indexOf("{")!==-1) f.description = renderClassText(def.description, clsData, level)+(f.descriptionExtra||"");
+    (f.effects||[]).forEach(function(eff){
+      if(eff.scaleColumn) eff.value = Number(classColumnValue(clsData, eff.scaleColumn, level))||0;
+      if(eff.scaleClassLevel) eff.value = level;
+    });
+  });
+}
+
 function onClassesChanged(){
   autoFillSaves();
   renderSaves();
@@ -233,6 +272,9 @@ function onClassesChanged(){
   syncHitDicePools();
   renderHitDice();
   renderClasses();
+  syncClassFeatures();
+  renderFeatures();
+  renderResources();
   renderComputed();
   scheduleSave();
 }
@@ -307,7 +349,7 @@ function defaultState(){
   var skills = {};
   SKILLS.forEach(function(s){ skills[s[0]] = {prof:false, exp:false}; });
   return {
-    meta:{name:"",classes:[{class:"",level:1}],race:"",background:"",alignment:"",playerName:"",xp:0,portrait:"",campaign:"",color:"",size:"medium"},
+    meta:{name:"",classes:[{class:"",level:1}],race:"",background:"",alignment:"",playerName:"",xp:0,portrait:"",campaign:"",color:"",size:"medium",senses:"",speciesChoices:{}},
     settings:defaultSettings(),
     abilities:{str:10,dex:10,con:10,int:10,wis:10,cha:10},
     saves:{str:false,dex:false,con:false,int:false,wis:false,cha:false},
@@ -835,6 +877,7 @@ function timeNow(){
 
 function buildDatalists(){
   fillDatalist("dl-classes", CLASSES);
+  fillDatalist("dl-subclasses", CLASSES.reduce(function(all, c){ return all.concat((CLASS_DATA[c].subclasses||[])); }, []));
   fillDatalist("dl-races", RACES);
   fillDatalist("dl-backgrounds", BACKGROUNDS);
   fillDatalist("dl-alignments", ALIGNMENTS);
@@ -850,6 +893,7 @@ function renderClasses(){
   var html = state.meta.classes.map(function(c,i){
     return '<div class="entry-top">'+
       '<input type="text" list="dl-classes" class="entry-mid" data-bind="meta.classes.'+i+'.class" value="'+esc(c.class)+'" placeholder="Class">'+
+      '<input type="text" list="dl-subclasses" class="entry-mid" data-bind="meta.classes.'+i+'.subclass" value="'+esc(c.subclass||"")+'" placeholder="Subclass">'+
       '<input type="number" min="1" max="20" class="entry-narrow no-spin" data-bind="meta.classes.'+i+'.level" value="'+(c.level||1)+'" title="Level in this class">'+
       (state.meta.classes.length>1 ? '<button class="row-del" onclick="removeClassRow('+i+')" title="Remove class">&times;</button>' : '')+
       '</div>';
@@ -2565,7 +2609,30 @@ function renderSummons(){
   pcRenderSummonTokenSelect();
 }
 
+// Resources added from species traits can have maxFrom:"pb" — their max follows Proficiency Bonus.
+// Class resources have classRef — their max and reset follow the class level.
+function syncResourceMaxes(){
+  state.resources.forEach(function(r){
+    var newMax;
+    if(r.maxFrom==="pb") newMax = profBonus(totalLevel());
+    else if(r.classRef){
+      var def = classFeatureDef(r.classRef);
+      if(!def || !(def.resource || def.resources)) return;
+      var level = classLevelOf(r.classRef.class);
+      var resDef = (def.resources||[def.resource]).find(function(x){ return x && (x.name||def.name)===r.name; }) || def.resource;
+      if(!resDef) return;
+      newMax = classResourceMax(resDef, scaleDataFor(r.classRef.class, r.classRef.subclass), level);
+      r.resetOn = classResourceResetOn(resDef, level);
+    } else return;
+    var oldMax = Number(r.max)||0;
+    if(oldMax===newMax) return;
+    r.max = newMax;
+    r.current = Math.max(0, Math.min(newMax, (Number(r.current)||0) + Math.max(0, newMax-oldMax)));
+  });
+}
+
 function renderResources(){
+  syncResourceMaxes();
   var el = document.getElementById("resources-grid");
   el.innerHTML = state.resources.map(function(r,i){
     return '<div class="resource-card">'+
@@ -2577,7 +2644,7 @@ function renderResources(){
       '<button class="btn resource-btn" onclick="adjustResource('+i+',-1)">-</button>'+
       '<input type="number" min="0" data-bind="resources.'+i+'.current" value="'+(r.current||0)+'">'+
       '<span class="hp-sep">/</span>'+
-      '<input type="number" min="0" data-bind="resources.'+i+'.max" value="'+(r.max||0)+'">'+
+      '<input type="number" min="0" data-bind="resources.'+i+'.max" value="'+(r.max||0)+'"'+(r.maxFrom==="pb"?' title="Follows your Proficiency Bonus"':'')+'>'+
       '<button class="btn resource-btn" onclick="adjustResource('+i+',1)">+</button>'+
       '</div>'+
       '<select class="resource-reset" data-bind="resources.'+i+'.resetOn" title="Resets on">'+
@@ -2926,7 +2993,8 @@ function skillBonus(key, pb){
   var ab = SKILLS.find(function(x){ return x[0]===key; })[2];
   var isExp = s.exp || effectHasGrant("skillExpertise."+key);
   var isProf = isExp || s.prof || effectHasGrant("skillProficiency."+key);
-  return mod(effAbilityScore(ab)) + (isExp ? pb*2 : (isProf ? pb : 0)) + effectBonusTotal("skill."+key) + effectBonusTotal("skillAll") + effectBonusTotal("checkAll."+ab);
+  var profPart = isExp ? pb*2 : (isProf ? pb : (effectHasGrant("halfProfSkills") ? Math.floor(pb/2) : 0));
+  return mod(effAbilityScore(ab)) + profPart + effectBonusTotal("skill."+key) + effectBonusTotal("skillAll") + effectBonusTotal("checkAll."+ab);
 }
 
 function renderComputed(){
@@ -3018,6 +3086,7 @@ function applyHeal(){
 
 function shortRest(){
   state.spellcasting.pact.current = state.spellcasting.pact.slots;
+  syncResourceMaxes();
   state.resources.forEach(function(r){ if(r.resetOn==="short"){ r.current = r.max; } });
   populateBindValues();
   renderSlots();
@@ -3044,7 +3113,10 @@ function longRest(){
   state.combat.concentration.active = false;
   state.spellcasting.slots.forEach(function(s){ s.current = s.total; });
   state.spellcasting.pact.current = state.spellcasting.pact.slots;
+  syncResourceMaxes();
   state.resources.forEach(function(r){ if(r.resetOn==="short"||r.resetOn==="long"){ r.current = r.max; } });
+  var species = SPECIES_DATA[state.meta.race];
+  if(species && species.longRestInspiration) state.combat.inspiration = true;
   populateBindValues();
   renderSlots();
   renderHitDice();
@@ -3112,7 +3184,7 @@ function handleBind(e){
     if(other.type==="checkbox"){ other.checked = !!val; }
     else{ other.value = val; }
   });
-  var classFieldMatch = el.dataset.bind.match(/^meta\.classes\.\d+\.(class|level)$/);
+  var classFieldMatch = el.dataset.bind.match(/^meta\.classes\.\d+\.(class|level|subclass)$/);
   if(classFieldMatch){ if(e.type==="change"){ onClassesChanged(); } }
   else if(el.dataset.bind==="combat.speedMod"){ onSpeedModChanged(Number(val)||0); renderComputed(); }
   else if(el.dataset.bind==="combat.flySpeedMod"){ onFlySpeedModChanged(Number(val)||0); renderComputed(); }
@@ -3367,8 +3439,10 @@ function setupButtons(){
   });
 }
 
+// ASI levels plus the Epic Boon level (both open the ASI / feat step in the level-up wizard).
 function asiLevelsFor(cls){
-  return ASI_LEVELS[cls] || ASI_LEVELS.default;
+  var c = CLASS_DATA[cls];
+  return c ? c.asiLevels.concat([c.epicBoonLevel]) : STANDARD_ASI_LEVELS.concat([19]);
 }
 
 function abilitySelectOptions(selected){
@@ -3391,6 +3465,16 @@ function newWizardState(mode){
     bgAbilityMode:"2-1",
     bgAbilityPicks:[null,null,null],
     skillProfs:{},
+    speciesSize:"",
+    speciesChoices:{},
+    speciesSkill:"",
+    speciesSpellAbility:"",
+    speciesFeat:"",
+    originFeatValues:{},
+    featValues:{},
+    featAbility:"",
+    featIgnorePrereq:false,
+    classFeatureValues:{},
     startingEquipment:[],
     levelUpClassIndex: null,
     levelUpNewClassName:"",
@@ -3407,10 +3491,45 @@ function newWizardState(mode){
   };
 }
 
+// Books the campaign's DM has enabled (DM screen → Books). null = no campaign, everything allowed.
+// A campaign that never picked books only allows the 2024 PHB.
+var campaignBooksCache = {};
+function loadCampaignBooks(campaignName){
+  var slug = campaignSlug(campaignName||"");
+  if(!slug) return Promise.resolve(null);
+  if(campaignBooksCache[slug]) return Promise.resolve(campaignBooksCache[slug]);
+  return fetch("/api/campaign/"+encodeURIComponent(slug)+"/settings", {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(data){
+    var books = (data && Array.isArray(data.books)) ? data.books : ["PHB'24"];
+    campaignBooksCache[slug] = books;
+    return books;
+  }).catch(function(){ return null; });
+}
+function wizardLoadBooks(campaignName){
+  return loadCampaignBooks(campaignName).then(function(books){
+    if(wizardState) wizardState.books = books;
+  });
+}
+function sourceAllowed(source){
+  var books = wizardState ? wizardState.books : null;
+  return !source || source==="PHB'24" || !books || books.indexOf(source)!==-1;
+}
+function allowedNames(table){
+  return Object.keys(table).filter(function(n){ return sourceAllowed(table[n].source); });
+}
+function wizardDatalistHtml(id, names){
+  return '<datalist id="'+id+'">'+names.map(function(n){ return '<option value="'+esc(n)+'"></option>'; }).join("")+'</datalist>';
+}
+function wizardBooksNote(){
+  var books = wizardState ? wizardState.books : null;
+  if(!books) return "All books are available (no campaign selected).";
+  return "Books allowed in this campaign: "+BOOKS.filter(function(b){ return b.core || books.indexOf(b.id)!==-1; }).map(function(b){ return b.name; }).join(", ")+".";
+}
+
 function openWizard(mode){
   wizardState = newWizardState(mode);
   document.getElementById("wizard-overlay").style.display = "flex";
   renderWizardStep();
+  wizardLoadBooks(mode==="create" ? wizardState.campaign : state.meta.campaign).then(function(){ if(wizardState) renderWizardStep(); });
 }
 
 function closeWizard(){
@@ -3446,6 +3565,9 @@ function renderWizardStep(){
   var html = "";
   switch(wizardState.step){
     case "identity": html = wizardStepIdentity(); break;
+    case "species": html = wizardStepSpecies(); break;
+    case "origin-feats": html = wizardStepOriginFeats(); break;
+    case "class-features": html = wizardStepClassFeatures(); break;
     case "class": html = wizardStepClass(); break;
     case "abilities": html = wizardStepAbilities(); break;
     case "bg-ability": html = wizardStepBackgroundBonus(); break;
@@ -3466,13 +3588,29 @@ function wizardStepIdentity(){
   return '<div class="wizard-step-title">New Character — Identity</div>'+
     '<div class="wizard-grid">'+
       '<div class="wizard-field"><label>Name</label><input type="text" id="wiz-name" value="'+esc(w.name)+'" placeholder="Character name"></div>'+
-      '<div class="wizard-field"><label>Race</label><input type="text" list="dl-races" id="wiz-race" value="'+esc(w.race)+'"></div>'+
-      '<div class="wizard-field"><label>Background</label><input type="text" list="dl-backgrounds" id="wiz-background" value="'+esc(w.background)+'"></div>'+
+      '<div class="wizard-field"><label>Species</label><input type="text" list="wiz-dl-races" id="wiz-race" value="'+esc(w.race)+'"></div>'+
+      '<div class="wizard-field"><label>Background</label><input type="text" list="wiz-dl-backgrounds" id="wiz-background" value="'+esc(w.background)+'"></div>'+
       '<div class="wizard-field"><label>Alignment</label><input type="text" list="dl-alignments" id="wiz-alignment" value="'+esc(w.alignment)+'"></div>'+
       '<div class="wizard-field"><label>Player Name</label><input type="text" id="wiz-playerName" value="'+esc(w.playerName)+'"></div>'+
-      '<div class="wizard-field"><label>Campaign</label><select id="wiz-campaign">'+campaignSelectOptionsHtml(w.campaign)+'</select></div>'+
+      '<div class="wizard-field"><label>Campaign</label><select id="wiz-campaign" onchange="wizardIdentityCampaignChanged()">'+campaignSelectOptionsHtml(w.campaign)+'</select></div>'+
     '</div>'+
+    '<div class="footer-line">'+esc(wizardBooksNote())+'</div>'+
+    wizardDatalistHtml("wiz-dl-races", allowedNames(SPECIES_DATA))+
+    wizardDatalistHtml("wiz-dl-backgrounds", allowedNames(BACKGROUND_DATA))+
     wizardNavHtml({nextFn:"wizardCommitIdentity()"});
+}
+function wizardReadIdentityFields(){
+  var w = wizardState;
+  w.name = document.getElementById("wiz-name").value.trim();
+  w.race = document.getElementById("wiz-race").value.trim();
+  w.background = document.getElementById("wiz-background").value.trim();
+  w.alignment = document.getElementById("wiz-alignment").value.trim();
+  w.playerName = document.getElementById("wiz-playerName").value.trim();
+  w.campaign = document.getElementById("wiz-campaign").value.trim();
+}
+function wizardIdentityCampaignChanged(){
+  wizardReadIdentityFields();
+  wizardLoadBooks(wizardState.campaign).then(function(){ if(wizardState && wizardState.step==="identity") renderWizardStep(); });
 }
 function wizardCommitIdentity(){
   var w = wizardState;
@@ -3482,13 +3620,372 @@ function wizardCommitIdentity(){
   w.alignment = document.getElementById("wiz-alignment").value.trim();
   w.playerName = document.getElementById("wiz-playerName").value.trim();
   w.campaign = document.getElementById("wiz-campaign").value.trim();
+  wizardGoTo(SPECIES_DATA[w.race] ? "species" : "class");
+}
+
+function speciesOptionFor(species, choices, choiceId){
+  var c = (species.choices||[]).find(function(x){ return x.id===choiceId; });
+  return c ? (c.options||[]).find(function(o){ return o.name===(choices||{})[choiceId]; }) : null;
+}
+// A chosen lineage can override base species stats (e.g. Wood Elf speed, Drow darkvision).
+function speciesStat(speciesName, choices, key){
+  var species = SPECIES_DATA[speciesName];
+  if(!species) return undefined;
+  var val = species[key];
+  (species.choices||[]).forEach(function(c){
+    var opt = speciesOptionFor(species, choices, c.id);
+    if(opt && opt[key]!==undefined) val = opt[key];
+  });
+  return val;
+}
+function speciesTraitsFor(speciesName, choices){
+  var species = SPECIES_DATA[speciesName];
+  if(!species) return [];
+  var traits = (species.traits||[]).slice();
+  (species.choices||[]).forEach(function(c){
+    var opt = speciesOptionFor(species, choices, c.id);
+    if(opt) traits = traits.concat(opt.traits||[]);
+  });
+  return traits;
+}
+// Adds species traits, resources and spells gained after fromLevel up to and including toLevel.
+function applySpeciesLevels(fromLevel, toLevel){
+  var choices = state.meta.speciesChoices||{};
+  var ability = ABILITIES.find(function(a){ return a[0]===choices.spellAbility; });
+  var inRange = function(lvl){ lvl = lvl||1; return lvl>fromLevel && lvl<=toLevel; };
+  speciesTraitsFor(state.meta.race, choices).forEach(function(t){
+    if(inRange(t.minLevel)){
+      state.features.push({name:t.name, source:"Species Trait", description:t.description||"", effects:JSON.parse(JSON.stringify(t.effects||[]))});
+      (t.resources || (t.resource ? [t.resource] : [])).forEach(function(r){ pushTraitResource(r, t.name, state.meta.race+" trait", toLevel); });
+    }
+    (t.spells||[]).forEach(function(sp){
+      if(!inRange(sp.minLevel||t.minLevel)) return;
+      state.spells.push({level:sp.level||0, name:sp.name, prepared:true, combat:false,
+        notes:t.name+(ability?" — "+ability[1]:"")+(sp.minLevel?" · once per Long Rest without a slot":"")});
+    });
+  });
+}
+function speciesUpcomingTraitNames(newLevel){
+  return speciesTraitsFor(state.meta.race, state.meta.speciesChoices).filter(function(t){
+    return (t.minLevel||1)===newLevel || (t.spells||[]).some(function(sp){ return sp.minLevel===newLevel; });
+  }).map(function(t){ return t.name; });
+}
+
+function pushTraitResource(def, fallbackName, note, level){
+  var max = def.max==="pb" ? profBonus(level) : (Number(def.max)||0);
+  var res = {name:def.name||fallbackName, current:max, max:max, notes:note, resetOn:def.resetOn||"long"};
+  if(def.max==="pb") res.maxFrom = "pb";
+  state.resources.push(res);
+}
+
+// "Magic Initiate (Cleric)" -> the Magic Initiate feat with "Cleric" preset as its spell list.
+function parseFeatRef(ref){
+  ref = String(ref||"").trim();
+  if(FEAT_DATA[ref]) return {name:ref, feat:FEAT_DATA[ref], preset:""};
+  var m = ref.match(/^(.*?)\s*\((.*)\)$/);
+  if(m && FEAT_DATA[m[1]]) return {name:m[1], feat:FEAT_DATA[m[1]], preset:m[2]};
+  return {name:ref, feat:null, preset:""};
+}
+function featChoiceCount(c, level){ return c.count==="pb" ? profBonus(level) : (c.count||1); }
+function featChoicePreset(c, preset){
+  return (c.type==="option" && preset && c.options.some(function(o){ return o.name===preset; })) ? preset : "";
+}
+function abilityName(key){
+  var a = ABILITIES.find(function(x){ return x[0]===key; });
+  return a ? a[1] : key;
+}
+
+function characterClassNames(extraClass){
+  var names = (state.meta.classes||[]).map(function(c){ return matchClass(c.class); });
+  if(extraClass) names.push(matchClass(extraClass));
+  return names.filter(Boolean);
+}
+function hasSpellcastingFeature(extraClass){
+  if(characterClassNames(extraClass).some(function(c){ return CLASS_SPELL_ABILITY[c]; })) return true;
+  var sc = state.spellcasting||{};
+  return (sc.slots||[]).some(function(sl){ return (Number(sl.total)||0)>0; }) || (sc.pact && (Number(sc.pact.slots)||0)>0);
+}
+function hasArmorTraining(kind, extraClass){
+  var classes = characterClassNames(extraClass);
+  if((CLASS_ARMOR_TRAINING[kind]||[]).some(function(c){ return classes.indexOf(c)!==-1; })) return true;
+  var pattern = kind==="shield" ? /shield/i : new RegExp(kind+" armor", "i");
+  return pattern.test(state.notes.profLang||"");
+}
+function hasFightingStyle(extraClass){
+  var levels = {};
+  (state.meta.classes||[]).forEach(function(c){ var n = matchClass(c.class); if(n) levels[n] = (levels[n]||0) + (Number(c.level)||0); });
+  if(extraClass && matchClass(extraClass)) levels[matchClass(extraClass)] = (levels[matchClass(extraClass)]||0) + 1;
+  if(levels.Fighter || (levels.Paladin||0)>=2 || (levels.Ranger||0)>=2) return true;
+  return (state.features||[]).some(function(f){ return /fighting style/i.test(f.name||""); });
+}
+// Unmet prerequisites as readable strings (empty list = qualifies).
+function featPrereqProblems(feat, level, extraClass){
+  var p = feat.prereq||{}, problems = [];
+  if(p.level && level<p.level) problems.push("Level "+p.level);
+  if(p.abilities){
+    var keys = Object.keys(p.abilities);
+    if(!keys.some(function(k){ return effAbilityScore(k)>=p.abilities[k]; })){
+      problems.push(keys.map(function(k){ return abilityName(k).slice(0,3)+" "+p.abilities[k]; }).join(" or "));
+    }
+  }
+  if(p.spellcasting && !hasSpellcastingFeature(extraClass)) problems.push("Spellcasting");
+  if(p.armor && !hasArmorTraining(p.armor, extraClass)) problems.push(p.armor==="shield" ? "Shield training" : p.armor.charAt(0).toUpperCase()+p.armor.slice(1)+" armor training");
+  if(p.fightingStyle && !hasFightingStyle(extraClass)) problems.push("Fighting Style");
+  if(p.class && characterClassNames(extraClass).indexOf(p.class)===-1) problems.push(p.class);
+  if(p.species){
+    var speciesOk = p.species.indexOf(state.meta.race)!==-1 && (!p.lineage || ((state.meta.speciesChoices||{}).lineage===p.lineage));
+    if(!speciesOk && !(p.orSize && state.meta.size===p.orSize)){
+      problems.push((p.lineage ? p.lineage : p.species.join(" or "))+(p.orSize ? " or "+p.orSize.charAt(0).toUpperCase()+p.orSize.slice(1)+" size" : ""));
+    }
+  }
+  if(p.martialWeapons && !hasMartialWeaponProficiency(extraClass)) problems.push("Martial weapon proficiency");
+  return problems;
+}
+function hasMartialWeaponProficiency(extraClass){
+  if(characterClassNames(extraClass).some(function(c){ return /martial/i.test(CLASS_DATA[c].weapons||""); })) return true;
+  return /martial/i.test(state.notes.profLang||"");
+}
+function featAlreadyTaken(name){
+  return (state.features||[]).some(function(f){ return f.source==="Feat" && parseFeatRef(f.name).name===name; });
+}
+
+// Wizard fields for a feat's choices. idPrefix keeps several feats on one step apart.
+// ctx (optional): {cls, proficient:[skill keys]} for class choices.
+function featChoiceFieldsHtml(feat, preset, values, idPrefix, level, ctx){
+  values = values||{};
+  ctx = ctx||{};
+  return (feat.choices||[]).map(function(c){
+    var fixed = featChoicePreset(c, preset);
+    if(fixed) return '<div class="wizard-field"><label>'+esc(c.label)+'</label><div class="footer-line">'+esc(fixed)+'</div></div>';
+    var n = featChoiceCount(c, level), html = "";
+    for(var i=0;i<n;i++){
+      var id = idPrefix+"-"+c.id+"-"+i;
+      var cur = (values[c.id]||[])[i]||"";
+      var label = c.label+(n>1?" "+(i+1):"");
+      var input;
+      if(c.type==="option"){
+        input = '<select id="'+id+'"><option value="">— choose —</option>'+c.options.map(function(o){ return '<option value="'+esc(o.name)+'"'+(o.name===cur?" selected":"")+'>'+esc(o.name)+'</option>'; }).join("")+'</select>';
+      } else if(c.type==="fightingStyle" || c.type==="subclass"){
+        var names = c.type==="subclass"
+          ? ((CLASS_DATA[ctx.cls]||{}).subclasses||[]).filter(function(n){ var sd = subclassDataFor(ctx.cls, n); return !sd || sourceAllowed(sd.source); })
+          : Object.keys(FEAT_DATA).filter(function(n){
+            var f = FEAT_DATA[n];
+            return f.category==="fightingStyle" && sourceAllowed(f.source) && (!f.prereq || !f.prereq.class || f.prereq.class===ctx.cls) && !featAlreadyTaken(n);
+          });
+        input = '<select id="'+id+'"'+(c.type==="subclass" ? ' onchange="wizardSubclassPicked(this.value)"' : '')+'><option value="">— choose —</option>'+names.map(function(n){ return '<option value="'+esc(n)+'"'+(n===cur?" selected":"")+'>'+esc(n)+'</option>'; }).join("")+'</select>';
+      } else if(c.type==="skill"){
+        var list = c.from==="any" ? SKILLS
+          : c.from==="proficient" ? SKILLS.filter(function(sk){ return !ctx.proficient || ctx.proficient.indexOf(sk[0])!==-1; })
+          : SKILLS.filter(function(sk){ return c.from.indexOf(sk[0])!==-1; });
+        input = '<select id="'+id+'"><option value="">— choose —</option>'+list.map(function(sk){ return '<option value="'+sk[0]+'"'+(sk[0]===cur?" selected":"")+'>'+esc(sk[1])+'</option>'; }).join("")+'</select>';
+      } else if(c.type==="ability"){
+        input = '<select id="'+id+'"><option value="">— choose —</option>'+c.from.map(function(k){ return '<option value="'+k+'"'+(k===cur?" selected":"")+'>'+esc(abilityName(k))+'</option>'; }).join("")+'</select>';
+      } else {
+        input = '<input type="text" id="'+id+'" value="'+esc(cur)+'"'+(c.type==="spell"?' placeholder="Spell name"':'')+'>';
+      }
+      html += '<div class="wizard-field"><label>'+esc(label)+'</label>'+input+'</div>';
+    }
+    return html;
+  }).join("");
+}
+// Reads the fields back. Returns {values} or {error}. Spell/text fields may be left blank.
+// lenient skips validation (used to keep typed values when the step re-renders).
+function readFeatChoiceFields(feat, preset, idPrefix, level, lenient){
+  var values = {};
+  for(var ci=0; ci<(feat.choices||[]).length; ci++){
+    var c = feat.choices[ci];
+    if(featChoicePreset(c, preset)){ values[c.id] = [preset]; continue; }
+    var vals = [];
+    for(var i=0;i<featChoiceCount(c, level);i++){
+      var el = document.getElementById(idPrefix+"-"+c.id+"-"+i);
+      vals.push(el ? el.value.trim() : "");
+    }
+    if(!lenient && c.type!=="spell" && c.type!=="text"){
+      if(vals.some(function(v){ return !v; })) return {error:feat.name+": choose "+c.label+"."};
+      if((new Set(vals)).size!==vals.length) return {error:feat.name+": pick different options for "+c.label+"."};
+    }
+    values[c.id] = vals;
+  }
+  return {values:values};
+}
+
+// Puts a feat on the sheet.
+function applyFeat(name, values, abilityKey, level, originNote){
+  var feat = FEAT_DATA[name];
+  applyEntry(feat, values, {name:name, source:"Feat", level:level, note:originNote, abilityKey:abilityKey, abilityCap:feat.category==="epicBoon" ? 30 : 20});
+}
+
+// Puts a feat or class feature on the sheet: feature + effects, ability increases, resources,
+// spells, proficiencies and senses. opts: {name, source, level, note, abilityKey, abilityCap,
+// classRef, clsData, classLevel}.
+function applyEntry(entry, values, opts){
+  values = values||{};
+  var render = function(t){ return opts.clsData ? renderClassText(t, opts.clsData, opts.classLevel) : t; };
+  var effects = JSON.parse(JSON.stringify(entry.effects||[]));
+  effects.forEach(function(eff){
+    if(eff.value && typeof eff.value==="object" && eff.value.column){
+      eff.scaleColumn = eff.value.column;
+      eff.value = Number(classColumnValue(opts.clsData, eff.value.column, opts.classLevel))||0;
+    } else if(eff.value && typeof eff.value==="object" && eff.value.classLevel){
+      eff.scaleClassLevel = true;
+      eff.value = opts.classLevel;
+    }
+  });
+  var nameParts = [], summary = [], profLines = [], spells = (entry.spells||[]).slice(), grantsList = [entry.grants||{}];
+  var fightingStyle = "";
+  var spellAbility = opts.abilityKey && ["int","wis","cha"].indexOf(opts.abilityKey)!==-1 ? opts.abilityKey : "";
+  (entry.choices||[]).forEach(function(c){
+    var vals = (values[c.id]||[]).filter(Boolean);
+    if(!vals.length) return;
+    if(c.type==="option"){
+      vals.forEach(function(v){
+        var opt = c.options.find(function(o){ return o.name===v; });
+        if(opt && opt.effects) effects = effects.concat(JSON.parse(JSON.stringify(opt.effects)));
+        if(opt && opt.grants) grantsList.push(opt.grants);
+      });
+      if(c.inName) nameParts.push(vals.join(", ")); else summary.push(c.label+": "+vals.join(", "));
+    } else if(c.type==="skill"){
+      vals.forEach(function(k){
+        var grant = c.grant;
+        if(grant==="profOrExpertise") grant = (state.skills[k].prof || effectHasGrant("skillProficiency."+k)) ? "expertise" : "proficiency";
+        effects.push({target:(grant==="expertise"?"skillExpertise.":"skillProficiency.")+k, type:"grant", value:"", condition:"always"});
+        summary.push((grant==="expertise"?"Expertise":"Proficiency")+": "+SKILLS.find(function(sk){ return sk[0]===k; })[1]);
+      });
+    } else if(c.type==="ability"){
+      spellAbility = vals[0];
+      summary.push(c.label+": "+abilityName(vals[0]));
+    } else if(c.type==="spell"){
+      vals.forEach(function(v){ spells.push({name:v, level:c.level, oncePerLongRest:c.oncePerLongRest}); });
+    } else if(c.type==="fightingStyle"){
+      fightingStyle = vals[0];
+    } else if(c.type==="subclass"){
+      nameParts.push(vals[0]);
+      var row = (state.meta.classes||[]).find(function(cl){ return matchClass(cl.class)===opts.classRef.class; });
+      if(row) row.subclass = vals[0];
+    } else if(c.proficiency){
+      profLines.push((c.profLabel||c.label)+": "+vals.join(", "));
+    } else {
+      summary.push(c.label+": "+vals.join(", "));
+    }
+  });
+  if(opts.abilityKey){
+    state.abilities[opts.abilityKey] = Math.min(opts.abilityCap||20, (Number(state.abilities[opts.abilityKey])||10) + 1);
+    summary.unshift("+1 "+abilityName(opts.abilityKey));
+    if(entry.saveFromAbility) effects.push({target:"saveProficiency."+opts.abilityKey, type:"grant", value:"", condition:"always"});
+  }
+  if(entry.abilityIncrease){
+    Object.keys(entry.abilityIncrease).forEach(function(k){
+      if(k==="max") return;
+      state.abilities[k] = Math.min(entry.abilityIncrease.max||20, (Number(state.abilities[k])||10) + entry.abilityIncrease[k]);
+    });
+  }
+  var fullName = opts.name+(nameParts.length ? " ("+nameParts.join(", ")+")" : "");
+  var extra = (summary.length ? "\n"+summary.join(" · ") : "")+(opts.note ? "\n"+opts.note : "");
+  // A Fighting Style choice puts the chosen feat on the sheet instead of a separate class feature.
+  if(fightingStyle && FEAT_DATA[fightingStyle]){
+    applyFeat(fightingStyle, {}, null, opts.level, "Fighting Style from "+(opts.classRef ? opts.classRef.class : opts.name)+".");
+  } else {
+    var feature = {name:fullName, source:opts.source, description:render(entry.description)+extra, effects:effects};
+    if(opts.classRef){ feature.classRef = opts.classRef; feature.descriptionExtra = extra; }
+    state.features.push(feature);
+  }
+  var resources = entry.resources || (entry.resource ? [entry.resource] : []);
+  resources.forEach(function(r){
+    if(opts.classRef){
+      var max = classResourceMax(r, opts.clsData, opts.classLevel);
+      state.resources.push({name:r.name||entry.name, current:max, max:max, notes:opts.classRef.class+" feature", resetOn:classResourceResetOn(r, opts.classLevel), classRef:opts.classRef});
+    } else {
+      pushTraitResource(r, fullName, fullName+" feat", opts.level);
+    }
+  });
+  spells.forEach(function(sp){
+    state.spells.push({level:sp.level||0, name:sp.name, prepared:true, combat:false,
+      notes:fullName+(spellAbility ? " — "+abilityName(spellAbility) : "")+(sp.oncePerLongRest ? " · once per Long Rest without a slot" : "")});
+  });
+  grantsList.forEach(function(g){
+    if(g.proficiencies) profLines.push(g.proficiencies);
+    if(g.senses) state.meta.senses = state.meta.senses ? state.meta.senses+", "+g.senses : g.senses;
+  });
+  profLines.forEach(function(line){ appendProficiencyLine(line); });
+}
+function appendProficiencyLine(line){
+  if(!line) return;
+  state.notes.profLang = state.notes.profLang ? state.notes.profLang+"\n"+line : line;
+}
+
+function wizardStepSpecies(){
+  var w = wizardState;
+  var species = SPECIES_DATA[w.race];
+  var fields = [];
+  if(species.sizes.length>1){
+    var size = w.speciesSize || species.sizes[0];
+    fields.push('<div class="wizard-field"><label>Size</label><select id="wiz-sp-size">'+species.sizes.map(function(k){
+      var found = SIZE_OPTIONS.find(function(o){ return o[0]===k; });
+      return '<option value="'+k+'"'+(k===size?" selected":"")+'>'+esc(found?found[1]:k)+'</option>';
+    }).join("")+'</select></div>');
+  }
+  (species.choices||[]).forEach(function(c){
+    fields.push('<div class="wizard-field"><label>'+esc(c.label)+'</label><select id="wiz-sp-choice-'+c.id+'"><option value="">— choose —</option>'+
+      c.options.map(function(o){ return '<option value="'+esc(o.name)+'"'+(o.name===w.speciesChoices[c.id]?" selected":"")+'>'+esc(o.name)+'</option>'; }).join("")+
+      '</select></div>');
+  });
+  if(species.skillChoice){
+    var list = species.skillChoice.skills==="any" ? SKILLS : SKILLS.filter(function(s){ return species.skillChoice.skills.indexOf(s[0])!==-1; });
+    fields.push('<div class="wizard-field"><label>'+esc(species.skillChoice.label)+' — Skill</label><select id="wiz-sp-skill"><option value="">— choose —</option>'+
+      list.map(function(s){ return '<option value="'+s[0]+'"'+(s[0]===w.speciesSkill?" selected":"")+'>'+esc(s[1])+'</option>'; }).join("")+
+      '</select></div>');
+  }
+  if(species.spellAbilityChoice){
+    fields.push('<div class="wizard-field"><label>Spellcasting Ability (species spells)</label><select id="wiz-sp-spellability"><option value="">— choose —</option>'+
+      ["int","wis","cha"].map(function(k){ var a = ABILITIES.find(function(x){ return x[0]===k; }); return '<option value="'+k+'"'+(k===w.speciesSpellAbility?" selected":"")+'>'+a[1]+'</option>'; }).join("")+
+      '</select></div>');
+  }
+  if(species.featChoice){
+    var pickedFeat = w.speciesFeat || species.featChoice.suggestion || "";
+    fields.push('<div class="wizard-field"><label>'+esc(species.featChoice.label)+'</label><select id="wiz-sp-feat"><option value="">— choose —</option>'+
+      Object.keys(FEAT_DATA).filter(function(n){ return FEAT_DATA[n].category==="origin" && sourceAllowed(FEAT_DATA[n].source); }).map(function(n){ return '<option value="'+esc(n)+'"'+(n===pickedFeat?" selected":"")+'>'+esc(n)+'</option>'; }).join("")+
+      '</select></div>');
+  }
+  var traitNames = (species.traits||[]).map(function(t){ return t.name+((t.minLevel||1)>1?" (level "+t.minLevel+")":""); });
+  return '<div class="wizard-step-title">Species — '+esc(w.race)+'</div>'+
+    '<div class="footer-line" style="margin-bottom:var(--sp-3);">'+esc(species.source)+' · Speed '+species.speed+' ft'+(species.darkvision?" · Darkvision "+species.darkvision+" ft":"")+
+      '. These traits are added to your sheet automatically: '+esc(traitNames.join(", "))+'.</div>'+
+    (fields.length ? '<div class="wizard-grid">'+fields.join("")+'</div>' : '<div class="footer-line">No choices to make for this species.</div>')+
+    wizardNavHtml({nextFn:"wizardCommitSpecies()"});
+}
+function wizardCommitSpecies(){
+  var w = wizardState;
+  var species = SPECIES_DATA[w.race];
+  var sizeEl = document.getElementById("wiz-sp-size");
+  w.speciesSize = sizeEl ? sizeEl.value : species.sizes[0];
+  var choices = {};
+  var missing = (species.choices||[]).filter(function(c){
+    choices[c.id] = document.getElementById("wiz-sp-choice-"+c.id).value;
+    return !choices[c.id];
+  });
+  if(missing.length){ alert("Choose your "+missing[0].label+"."); return; }
+  w.speciesChoices = choices;
+  if(species.skillChoice){
+    var skill = document.getElementById("wiz-sp-skill").value;
+    if(!skill){ alert("Choose a skill for "+species.skillChoice.label+"."); return; }
+    if(w.speciesSkill) w.skillProfs[w.speciesSkill] = false;
+    w.speciesSkill = skill;
+    w.skillProfs[skill] = true;
+  }
+  if(species.spellAbilityChoice){
+    w.speciesSpellAbility = document.getElementById("wiz-sp-spellability").value;
+    if(!w.speciesSpellAbility){ alert("Choose a spellcasting ability for your species spells."); return; }
+  }
+  w.speciesFeat = species.featChoice ? document.getElementById("wiz-sp-feat").value : "";
+  if(species.featChoice && !w.speciesFeat){ alert("Choose an Origin feat for "+species.featChoice.label+"."); return; }
   wizardGoTo("class");
 }
 
 function wizardStepClass(){
   var w = wizardState;
   return '<div class="wizard-step-title">Class</div>'+
-    '<div class="wizard-field"><label>Class</label><input type="text" list="dl-classes" id="wiz-class" value="'+esc(w.cls)+'" placeholder="e.g. Fighter"></div>'+
+    '<div class="wizard-field"><label>Class</label><input type="text" list="wiz-dl-classes" id="wiz-class" value="'+esc(w.cls)+'" placeholder="e.g. Fighter"></div>'+
+    wizardDatalistHtml("wiz-dl-classes", allowedNames(CLASS_DATA))+
     '<div class="footer-line">You\'ll start at level 1. You can add a second class later via Level Up.</div>'+
     wizardNavHtml({nextFn:"wizardCommitClass()"});
 }
@@ -3624,13 +4121,26 @@ function wizardCommitBackgroundBonus(){
     if(p0===p1){ alert("Choose two different abilities."); return; }
     w.bgAbilityPicks = [p0, p1, null];
   }
+  var bg = BACKGROUND_DATA[w.background];
+  if(bg) bg.skills.forEach(function(k){ w.skillProfs[k] = true; });
   wizardGoTo("skills");
 }
 
 function wizardStepSkills(){
   var w = wizardState;
+  var bg = BACKGROUND_DATA[w.background];
+  var bgNote = bg
+    ? ' Your background ('+esc(w.background)+') grants '+bg.skills.map(function(k){ return SKILLS.find(function(x){ return x[0]===k; })[1]; }).join(" and ")+
+      ' (already ticked), plus '+esc(bg.tool)+' proficiency and the '+esc(bg.feat)+' origin feat.'
+    : '';
+  var cls = CLASS_DATA[matchClass(w.cls)];
+  if(cls){
+    var sc = cls.skillChoice;
+    bgNote += ' Your class ('+esc(matchClass(w.cls))+') lets you choose '+sc.count+(sc.from==="any" ? " skills of any kind." : " from: "+
+      sc.from.map(function(k){ return SKILLS.find(function(x){ return x[0]===k; })[1]; }).join(", ")+".");
+  }
   return '<div class="wizard-step-title">Skill Proficiencies</div>'+
-    '<div class="footer-line" style="margin-bottom:var(--sp-3);">Tick any skills you\'re proficient in. (Your class and background normally limit this to a specific list — pick whichever apply.)</div>'+
+    '<div class="footer-line" style="margin-bottom:var(--sp-3);">Tick any skills you\'re proficient in. (Your class and background normally limit this to a specific list — pick whichever apply.)'+bgNote+'</div>'+
     '<div class="wizard-skill-grid">'+
     SKILLS.map(function(s){
       return '<label class="settings-row wizard-skill-row"><input type="checkbox" id="wiz-skill-'+s[0]+'" '+(w.skillProfs[s[0]]?"checked":"")+'><span class="settings-row-title">'+esc(s[1])+'</span></label>';
@@ -3646,7 +4156,191 @@ function wizardCommitSkills(){
   });
   w.targetClass = w.cls;
   w.newLevel = 1;
+  wizardGoTo(CLASS_DATA[matchClass(w.cls)] ? "class-features" : (wizardOriginFeatList().length ? "origin-feats" : "hp"));
+}
+
+// Origin feats picked up at creation: one from the background, one from Human's Versatile.
+function wizardOriginFeatList(){
+  var w = wizardState, list = [];
+  var bg = BACKGROUND_DATA[w.background];
+  if(bg) list.push({key:"background", ref:bg.feat, from:"Origin feat from the "+w.background+" background."});
+  var species = SPECIES_DATA[w.race];
+  if(species && species.featChoice && w.speciesFeat) list.push({key:"species", ref:w.speciesFeat, from:"Origin feat from "+species.featChoice.label.split(" ")[0]+" ("+w.race+")."});
+  return list;
+}
+// One full-width wizard section per feature: title and description, then its choices in a row below.
+function wizardSectionHtml(title, description, fieldsHtml){
+  return '<div class="wizard-section">'+
+    '<div class="wizard-section-title">'+esc(title)+'</div>'+
+    (description ? '<div class="wizard-section-desc">'+esc(description)+'</div>' : '')+
+    (fieldsHtml ? '<div class="wizard-section-fields">'+fieldsHtml+'</div>' : '')+
+    '</div>';
+}
+function wizardStepOriginFeats(){
+  var w = wizardState;
+  var blocks = wizardOriginFeatList().map(function(of){
+    var ref = parseFeatRef(of.ref);
+    if(!ref.feat) return wizardSectionHtml(of.ref, of.from+" Not in the rules database yet — it will be added as a plain feature.", "");
+    return wizardSectionHtml(of.ref, of.from+" "+ref.feat.description,
+      featChoiceFieldsHtml(ref.feat, ref.preset, w.originFeatValues[of.key], "wiz-of-"+of.key, 1));
+  });
+  return '<div class="wizard-step-title">Origin Feats</div>'+
+    '<div class="wizard-sections">'+blocks.join("")+'</div>'+
+    wizardNavHtml({nextFn:"wizardCommitOriginFeats()"});
+}
+function wizardCommitOriginFeats(){
+  var w = wizardState;
+  var list = wizardOriginFeatList();
+  for(var i=0;i<list.length;i++){
+    var ref = parseFeatRef(list[i].ref);
+    if(!ref.feat) continue;
+    var res = readFeatChoiceFields(ref.feat, ref.preset, "wiz-of-"+list[i].key, 1);
+    if(res.error){ alert(res.error); return; }
+    w.originFeatValues[list[i].key] = res.values;
+  }
   wizardGoTo("hp");
+}
+
+// Class features gained at the class level being reached (level 1 at creation or multiclass).
+function wizardClassLevelInfo(){
+  var w = wizardState;
+  var cls = matchClass(w.targetClass);
+  var clsData = CLASS_DATA[cls];
+  if(!clsData) return null;
+  var level = w.newLevel;
+  var isNewClass = w.mode==="create" || w.levelUpClassIndex===-1;
+  var entries = (clsData.features||[]).filter(function(f){ return f.level===level; }).map(function(f){ return {key:"f:"+f.name, def:f}; });
+  var row = w.levelUpClassIndex!==null && w.levelUpClassIndex>=0 ? state.meta.classes[w.levelUpClassIndex] : null;
+  var subclass = row ? row.subclass : "";
+  if(level===clsData.subclassLevel){
+    entries.push({key:"subclass", def:{level:level, name:cls+" Subclass", description:"Choose your "+cls+" subclass. Its features are added automatically as you level.",
+      choices:[{id:"subclass", label:"Subclass", type:"subclass"}]}});
+    subclass = ((w.classFeatureValues.subclass||{}).subclass||[])[0] || "";
+  }
+  var subData = subclassDataFor(cls, subclass);
+  if(subData){
+    (subData.features||[]).filter(function(f){ return f.level===level; }).forEach(function(f){
+      entries.push({key:"s:"+f.name, def:f, subclass:subclass});
+    });
+  }
+  if(w.mode==="levelup" && w.levelUpClassIndex===-1){
+    var mc = clsData.multiclass||{};
+    entries.unshift({key:"multiclass", def:{level:1, name:"Multiclass: "+cls, description:"Proficiencies from multiclassing into "+cls+": "+((mc.proficiencies||"").replace(/\n/g, "; ")||"none beyond the Hit Point Die")+".",
+      grants:{proficiencies:mc.proficiencies||""},
+      choices:mc.skillChoice ? [{id:"skill", label:"Skill", type:"skill", from:mc.skillChoice.from, count:mc.skillChoice.count, grant:"proficiency"}] : []}});
+  }
+  var subclassNote = "";
+  if(!subData && level!==clsData.subclassLevel && (clsData.subclassFeatureLevels||[]).indexOf(level)!==-1){
+    subclassNote = "You also gain a subclass feature"+(subclass ? " from "+subclass+" (not in the rules database)" : " (set your subclass in the Details tab so it can be added)")+" — add it on the Features tab for now.";
+  }
+  // New spells: cantrips and prepared spells (or spellbook spells for Wizards) gained at this level.
+  // Spell tables come from the class, or from a subclass that adds spellcasting.
+  var spellSrc = clsData.caster ? clsData : (subData && subData.caster ? subData : {});
+  var prev = level-1;
+  var newCantrips = spellSrc.cantrips ? spellSrc.cantrips[level-1] - (prev ? spellSrc.cantrips[prev-1] : 0) : 0;
+  var newSpells = spellSrc.spellbookPerLevel ? (level===1 ? 6 : spellSrc.spellbookPerLevel)
+    : (spellSrc.prepared ? spellSrc.prepared[level-1] - (prev ? spellSrc.prepared[prev-1] : 0) : 0);
+  var maxSpellLevel = 0;
+  if(spellSrc.caster==="pact") maxSpellLevel = PACT_MAGIC_TABLE[level-1][0];
+  else if(spellSrc.caster){
+    var casterLevel = spellSrc.caster==="full" ? level : Math.ceil(level/(spellSrc.caster==="half" ? 2 : 3));
+    SPELL_SLOTS_BY_CASTER_LEVEL[casterLevel-1].forEach(function(n, i){ if(n>0) maxSpellLevel = i+1; });
+  }
+  return {cls:cls, clsData:clsData, subclass:subclass, level:level, isNewClass:isNewClass, entries:entries, subclassNote:subclassNote,
+    newCantrips:Math.max(0,newCantrips), newSpells:Math.max(0,newSpells), maxSpellLevel:maxSpellLevel};
+}
+function wizardProficientSkills(){
+  var w = wizardState;
+  if(w.mode==="create") return SKILLS.filter(function(s){ return w.skillProfs[s[0]]; }).map(function(s){ return s[0]; });
+  return SKILLS.filter(function(s){ return state.skills[s[0]].prof || effectHasGrant("skillProficiency."+s[0]); }).map(function(s){ return s[0]; });
+}
+function wizardStepClassFeatures(){
+  var w = wizardState;
+  var info = wizardClassLevelInfo();
+  var ctx = {cls:info.cls, proficient:wizardProficientSkills()};
+  var vals = w.classFeatureValues;
+  var blocks = info.entries.map(function(e, i){
+    return wizardSectionHtml(e.def.name, renderClassText(e.def.description, info.clsData, info.level),
+      featChoiceFieldsHtml(e.def, "", vals[e.key], "wiz-cf-"+i, info.level, ctx));
+  });
+  if(info.newCantrips || info.newSpells){
+    var spellRows = "";
+    for(var c=0;c<info.newCantrips;c++){
+      spellRows += '<div class="wizard-field"><label>New cantrip '+(c+1)+'</label><input type="text" id="wiz-cf-cantrip-'+c+'" value="'+esc(((vals.newCantrips||[])[c])||"")+'" placeholder="Cantrip name"></div>';
+    }
+    var label = info.clsData.spellbookPerLevel ? "Spellbook spell" : "New prepared spell";
+    if(!info.maxSpellLevel) info.newSpells = 0;
+    for(var n=0;n<info.newSpells;n++){
+      var cur = (vals.newSpells||[])[n]||{};
+      spellRows += '<div class="wizard-field"><label>'+label+' '+(n+1)+'</label><div class="wizard-inline-row" style="display:flex;gap:var(--sp-2);">'+
+        '<input type="text" id="wiz-cf-spell-'+n+'" value="'+esc(cur.name||"")+'" placeholder="Spell name" style="flex:1;">'+
+        '<select id="wiz-cf-spell-level-'+n+'">'+Array.from({length:info.maxSpellLevel}, function(_, k){ var lv = k+1; return '<option value="'+lv+'"'+((Number(cur.level)||1)===lv?" selected":"")+'>Level '+lv+'</option>'; }).join("")+'</select>'+
+        '</div></div>';
+    }
+    blocks.push(wizardSectionHtml("Spells", "Add the spells you gain at this level (optional — you can also fill them in on the Spells tab).", spellRows));
+  }
+  var checkNote = "";
+  var subData = subclassDataFor(info.cls, info.subclass);
+  if(subData && subData.checked==="PHB" && info.entries.some(function(e){ return e.subclass; })) checkNote = " ("+info.subclass+" was entered from the Player's Handbook rather than the SRD — worth a quick check.)";
+  return '<div class="wizard-step-title">'+esc(info.cls)+' Level '+info.level+' Features</div>'+
+    '<div class="footer-line" style="margin-bottom:var(--sp-3);">These are added to your sheet automatically'+(blocks.length?"; make any choices below.":".")+(info.subclassNote ? " "+esc(info.subclassNote) : "")+esc(checkNote)+'</div>'+
+    (blocks.length ? '<div class="wizard-sections">'+blocks.join("")+'</div>' : '<div class="footer-line">No new class features at this level.</div>')+
+    wizardNavHtml({nextFn:"wizardCommitClassFeatures()"});
+}
+function wizardSubclassPicked(name){
+  var w = wizardState;
+  var info = wizardClassLevelInfo();
+  info.entries.forEach(function(e, i){
+    var res = readFeatChoiceFields(e.def, "", "wiz-cf-"+i, info.level, true);
+    w.classFeatureValues[e.key] = res.values;
+  });
+  w.classFeatureValues.subclass = {subclass:[name]};
+  renderWizardStep();
+}
+function wizardCommitClassFeatures(){
+  var w = wizardState;
+  var info = wizardClassLevelInfo();
+  var values = {};
+  for(var i=0;i<info.entries.length;i++){
+    var res = readFeatChoiceFields(info.entries[i].def, "", "wiz-cf-"+i, info.level);
+    if(res.error){ alert(res.error); return; }
+    values[info.entries[i].key] = res.values;
+  }
+  values.newCantrips = [];
+  for(var c=0;c<info.newCantrips;c++) values.newCantrips.push(document.getElementById("wiz-cf-cantrip-"+c).value.trim());
+  values.newSpells = [];
+  for(var n=0;n<info.newSpells;n++){
+    values.newSpells.push({name:document.getElementById("wiz-cf-spell-"+n).value.trim(), level:Number(document.getElementById("wiz-cf-spell-level-"+n).value)||1});
+  }
+  w.classFeatureValues = values;
+  if(w.mode==="create") wizardGoTo(wizardOriginFeatList().length ? "origin-feats" : "hp");
+  else wizardGoTo("features");
+}
+// Applies the class level chosen in the wizard: proficiencies, features, subclass, new spells.
+function applyClassLevelFromWizard(){
+  var w = wizardState;
+  var info = wizardClassLevelInfo();
+  if(!info) return;
+  var vals = w.classFeatureValues||{};
+  if(w.mode==="create"){
+    var c = info.clsData;
+    appendProficiencyLine("Armor: "+(c.armor.length ? c.armor.map(function(k){ return k==="shield" ? "Shields" : k.charAt(0).toUpperCase()+k.slice(1)+" armor"; }).join(", ") : "None"));
+    appendProficiencyLine("Weapons: "+c.weapons);
+    if(c.tools) appendProficiencyLine("Tools: "+c.tools);
+  }
+  info.entries.forEach(function(e){
+    var classRef = {class:info.cls, name:e.def.name, level:e.def.level};
+    if(e.subclass) classRef.subclass = e.subclass;
+    applyEntry(e.def, vals[e.key], {name:e.def.name, source:e.subclass ? "Subclass Feature" : "Class Feature", level:totalLevel(), classRef:classRef,
+      clsData:scaleDataFor(info.cls, e.subclass), classLevel:info.level});
+  });
+  // A subclass can add spellcasting (Eldritch Knight, Arcane Trickster), so recompute slots.
+  autoFillSpellAbility();
+  autoFillSlots();
+  (vals.newCantrips||[]).forEach(function(n){ if(n) state.spells.push({level:0, name:n, prepared:true, combat:false, notes:info.cls}); });
+  (vals.newSpells||[]).forEach(function(sp){
+    if(sp.name) state.spells.push({level:sp.level, name:sp.name, prepared:!info.clsData.spellbookPerLevel, combat:false, notes:info.cls+(info.clsData.spellbookPerLevel ? " (spellbook)" : "")});
+  });
 }
 
 function wizardToggleNewClassField(isNew){
@@ -3663,7 +4357,8 @@ function wizardStepLevelUpClass(){
     '<div class="wizard-radio-list">'+rows+
     '<label class="wizard-radio-row"><input type="radio" name="wiz-levelup-class" value="new" '+(w.levelUpClassIndex===-1?"checked":"")+' onclick="wizardToggleNewClassField(true)"> Add a new class (multiclass)</label>'+
     '</div>'+
-    '<div class="wizard-field" id="wiz-newclass-field" style="'+(w.levelUpClassIndex===-1?"":"display:none;")+'"><label>New Class</label><input type="text" list="dl-classes" id="wiz-newclass-name" value="'+esc(w.levelUpNewClassName)+'"></div>'+
+    '<div class="wizard-field" id="wiz-newclass-field" style="'+(w.levelUpClassIndex===-1?"":"display:none;")+'"><label>New Class</label><input type="text" list="wiz-dl-classes" id="wiz-newclass-name" value="'+esc(w.levelUpNewClassName)+'"></div>'+
+    wizardDatalistHtml("wiz-dl-classes", allowedNames(CLASS_DATA))+
     wizardNavHtml({nextFn:"wizardCommitLevelUpClass()"});
 }
 function wizardCommitLevelUpClass(){
@@ -3736,14 +4431,23 @@ function wizardCommitHp(){
   if(w.mode==="levelup" && asiLevelsFor(matchClass(w.targetClass)).indexOf(w.newLevel)!==-1){
     wizardGoTo("asi");
   } else {
-    wizardGoTo("features");
+    wizardGoTo(wizardStepAfterAsi());
   }
+}
+// Level-up order: HP -> (ASI) -> class features -> extra features. At creation, class features
+// were already chosen before the origin feats, so HP goes straight on to extra features.
+function wizardStepAfterAsi(){
+  if(wizardState.mode!=="levelup") return "features";
+  return CLASS_DATA[matchClass(wizardState.targetClass)] ? "class-features" : "features";
 }
 
 function wizardSetAsiChoice(choice){ wizardState.asiChoice = choice; renderWizardStep(); }
 function wizardSetAsiMode(mode){ wizardState.asiMode = mode; renderWizardStep(); }
 function wizardStepAsi(){
   var w = wizardState;
+  var clsData = CLASS_DATA[matchClass(w.targetClass)];
+  var isEpic = !!clsData && w.newLevel===clsData.epicBoonLevel;
+  if(isEpic && w.asiChoice===null) w.asiChoice = "feat";
   var isFeat = w.asiChoice==="feat";
   var chooserHtml = '<div class="wizard-method-toggle">'+
     '<button class="btn'+(!isFeat?" wizard-method-active":"")+'" onclick="wizardSetAsiChoice(\'asi\')">Ability Score Improvement</button>'+
@@ -3751,9 +4455,7 @@ function wizardStepAsi(){
     '</div>';
   var body;
   if(isFeat){
-    body = '<div class="wizard-field"><label>Feat Name</label><input type="text" id="wiz-feat-name" value="'+esc(w.featName)+'" placeholder="e.g. Alert"></div>'+
-      '<div class="wizard-field"><label>Description (optional)</label><textarea id="wiz-feat-desc" class="auto-grow" rows="1">'+esc(w.featDescription)+'</textarea></div>'+
-      '<div class="footer-line">You can attach mechanical Effects to this feat afterward on the Features tab.</div>';
+    body = wizardFeatPickerHtml();
   } else {
     body = '<div class="wizard-asi-mode-toggle">'+
         '<button class="btn'+(w.asiMode==="one"?" wizard-method-active":"")+'" onclick="wizardSetAsiMode(\'one\')">+2 to one ability</button>'+
@@ -3764,16 +4466,79 @@ function wizardStepAsi(){
         (w.asiMode==="two" ? '<div class="wizard-ability-box"><label>Ability 2</label><select id="wiz-asi-1">'+abilitySelectOptions(w.asiPicks[1])+'</select></div>' : '')+
       '</div>';
   }
-  return '<div class="wizard-step-title">Ability Score Improvement or Feat (Level '+w.newLevel+')</div>'+
+  return '<div class="wizard-step-title">'+(isEpic ? "Epic Boon" : "Ability Score Improvement or Feat")+' (Level '+w.newLevel+')</div>'+
+    (isEpic ? '<div class="footer-line" style="margin-bottom:var(--sp-3);">You gain an Epic Boon feat or another feat you qualify for.</div>' : '')+
     chooserHtml+body+
     wizardNavHtml({nextFn:"wizardCommitAsi()"});
+}
+var FEAT_CATEGORY_LABELS = [["general","General Feats"],["origin","Origin Feats"],["fightingStyle","Fighting Style Feats"],["epicBoon","Epic Boons"]];
+function wizardPickFeat(name){
+  var w = wizardState;
+  w.featName = name;
+  w.featValues = {};
+  w.featAbility = "";
+  renderWizardStep();
+}
+function wizardToggleFeatIgnorePrereq(on){ wizardState.featIgnorePrereq = on; renderWizardStep(); }
+function wizardFeatPickerHtml(){
+  var w = wizardState;
+  var level = totalLevel()+1;
+  var isCustom = w.featName==="__custom";
+  var picker = '<select id="wiz-feat-pick" onchange="wizardPickFeat(this.value)"><option value="">— choose a feat —</option>'+
+    FEAT_CATEGORY_LABELS.map(function(cat){
+      var names = Object.keys(FEAT_DATA).filter(function(n){ return FEAT_DATA[n].category===cat[0] && !FEAT_DATA[n].asi && sourceAllowed(FEAT_DATA[n].source); }).sort();
+      return '<optgroup label="'+esc(cat[1])+'">'+names.map(function(n){
+        var feat = FEAT_DATA[n];
+        var problems = featPrereqProblems(feat, level, w.targetClass);
+        var taken = !feat.repeatable && featAlreadyTaken(n);
+        var blocked = taken || (problems.length && !w.featIgnorePrereq);
+        var note = taken ? " (already taken)" : (problems.length ? " — needs "+problems.join(", ") : "");
+        return '<option value="'+esc(n)+'"'+(n===w.featName?" selected":"")+(blocked?" disabled":"")+'>'+esc(n+note)+'</option>';
+      }).join("")+'</optgroup>';
+    }).join("")+
+    '<option value="__custom"'+(isCustom?" selected":"")+'>Other (not in the list)…</option></select>';
+  var html = '<div class="wizard-field"><label>Feat</label>'+picker+'</div>'+
+    '<label class="settings-row"><input type="checkbox" '+(w.featIgnorePrereq?"checked":"")+' onchange="wizardToggleFeatIgnorePrereq(this.checked)"><span class="settings-row-title">Ignore prerequisites (DM approved)</span></label>';
+  if(isCustom){
+    return html+'<div class="wizard-field"><label>Feat Name</label><input type="text" id="wiz-feat-name" value="'+esc(w.featCustomName||"")+'" placeholder="e.g. a feat from another book"></div>'+
+      '<div class="wizard-field"><label>Description (optional)</label><textarea id="wiz-feat-desc" class="auto-grow" rows="1">'+esc(w.featDescription)+'</textarea></div>'+
+      '<div class="footer-line">You can attach mechanical Effects to this feat afterward on the Features tab.</div>';
+  }
+  var feat = FEAT_DATA[w.featName];
+  if(!feat) return html;
+  html += '<div class="footer-line" style="margin:var(--sp-2) 0 var(--sp-3);">'+esc(feat.source)+' · '+esc(feat.description)+'</div>';
+  var fields = "";
+  if(feat.abilities){
+    var keys = feat.abilities==="any" ? ABILITIES.map(function(a){ return a[0]; }) : feat.abilities;
+    fields += '<div class="wizard-field"><label>+1 Ability'+(feat.saveFromAbility?" (also gain its saving throw proficiency)":"")+'</label><select id="wiz-feat-ability"><option value="">— choose —</option>'+
+      keys.map(function(k){ return '<option value="'+k+'"'+(k===w.featAbility?" selected":"")+'>'+esc(abilityName(k))+' ('+(Number(state.abilities[k])||10)+')</option>'; }).join("")+'</select></div>';
+  }
+  fields += featChoiceFieldsHtml(feat, "", w.featValues, "wiz-feat", level);
+  return html+(fields ? '<div class="wizard-grid">'+fields+'</div>' : '');
+}
+function wizardCommitFeatPick(){
+  var w = wizardState;
+  if(!w.featName){ alert("Choose a feat, or switch to Ability Score Improvement."); return false; }
+  if(w.featName==="__custom"){
+    w.featCustomName = document.getElementById("wiz-feat-name").value.trim();
+    w.featDescription = document.getElementById("wiz-feat-desc").value.trim();
+    if(!w.featCustomName){ alert("Name your feat, or pick one from the list."); return false; }
+    return true;
+  }
+  var feat = FEAT_DATA[w.featName];
+  if(feat.abilities){
+    w.featAbility = document.getElementById("wiz-feat-ability").value;
+    if(!w.featAbility){ alert("Choose which ability "+w.featName+" increases."); return false; }
+  }
+  var res = readFeatChoiceFields(feat, "", "wiz-feat", totalLevel()+1);
+  if(res.error){ alert(res.error); return false; }
+  w.featValues = res.values;
+  return true;
 }
 function wizardCommitAsi(){
   var w = wizardState;
   if(w.asiChoice==="feat"){
-    w.featName = document.getElementById("wiz-feat-name").value.trim();
-    w.featDescription = document.getElementById("wiz-feat-desc").value.trim();
-    if(!w.featName){ alert("Name your feat, or switch to Ability Score Improvement."); return; }
+    if(!wizardCommitFeatPick()) return;
   } else {
     w.asiChoice = "asi";
     w.asiPicks[0] = document.getElementById("wiz-asi-0").value || null;
@@ -3781,7 +4546,7 @@ function wizardCommitAsi(){
     if(!w.asiPicks[0] || (w.asiMode==="two" && !w.asiPicks[1])){ alert("Choose an ability (or two)."); return; }
     if(w.asiMode==="two" && w.asiPicks[0]===w.asiPicks[1]){ alert("Choose two different abilities, or switch to +2 on one."); return; }
   }
-  wizardGoTo("features");
+  wizardGoTo(wizardStepAfterAsi());
 }
 
 function wizardFeaturesListHtml(){
@@ -3812,8 +4577,12 @@ function wizardStepFeatures(){
   var w = wizardState;
   var title = w.mode==="create" ? "Starting Features & Traits" : "New Features at Level "+w.newLevel;
   var nextFn = w.mode==="create" ? "wizardGoTo('equipment')" : "wizardGoTo('finish')";
+  var upcoming = w.mode==="levelup" ? speciesUpcomingTraitNames(totalLevel()+1) : [];
+  var intro = w.mode==="create"
+    ? "Your class features, species traits and background feat are added automatically. Add anything else here."
+    : "Class features from the rules database were added in the previous step; add anything else here (e.g. subclass features)."+(upcoming.length ? " From your species you'll also gain: "+upcoming.join(", ")+" (added automatically)." : "");
   return '<div class="wizard-step-title">'+title+'</div>'+
-    '<div class="footer-line" style="margin-bottom:var(--sp-3);">Add any racial traits or class features gained here. You can always add more later on the Features tab.</div>'+
+    '<div class="footer-line" style="margin-bottom:var(--sp-3);">'+esc(intro)+' You can always add more later on the Features tab.</div>'+
     '<div class="entry-list" id="wiz-features-list">'+wizardFeaturesListHtml()+'</div>'+
     '<button class="btn add-row-btn" onclick="wizardAddFeature()">+ Add Feature</button>'+
     wizardNavHtml({nextFn:nextFn});
@@ -3882,6 +4651,11 @@ function wizardFinish(){
     resetExpandedState();
     state.meta.name = w.name;
     state.meta.race = w.race;
+    var species = SPECIES_DATA[w.race];
+    if(species){
+      state.meta.size = species.sizes[0];
+      state.combat.speed = species.speed;
+    }
     state.meta.background = w.background;
     state.meta.alignment = w.alignment;
     state.meta.playerName = w.playerName;
@@ -3895,7 +4669,24 @@ function wizardFinish(){
     (w.startingEquipment||[]).forEach(function(it){
       if(it.name) state.equipment.push({name:it.name, qty:it.qty||1, weight:it.weight||0, notes:"", attuned:false, equipped:false, effects:[]});
     });
+    var species = SPECIES_DATA[w.race];
+    if(species){
+      state.meta.speciesChoices = Object.assign({}, w.speciesChoices, w.speciesSpellAbility ? {spellAbility:w.speciesSpellAbility} : {});
+      state.meta.size = w.speciesSize || species.sizes[0];
+      state.combat.speed = speciesStat(w.race, state.meta.speciesChoices, "speed");
+      var darkvision = speciesStat(w.race, state.meta.speciesChoices, "darkvision");
+      state.meta.senses = darkvision ? "Darkvision "+darkvision+" ft" : "";
+      applySpeciesLevels(0, 1);
+    }
+    var bg = BACKGROUND_DATA[w.background];
+    if(bg) state.notes.profLang = "Tools: "+bg.tool;
+    wizardOriginFeatList().forEach(function(of){
+      var ref = parseFeatRef(of.ref);
+      if(ref.feat) applyFeat(ref.name, w.originFeatValues[of.key], null, 1, of.from);
+      else state.features.push({name:of.ref, source:"Feat", description:of.from, effects:[]});
+    });
   } else {
+    w.oldTotalLevel = totalLevel();
     if(w.levelUpClassIndex===-1){
       state.meta.classes.push({class: w.levelUpNewClassName, level:1});
     } else {
@@ -3904,6 +4695,7 @@ function wizardFinish(){
   }
 
   onClassesChanged();
+  applyClassLevelFromWizard();
 
   var cls = matchClass(w.targetClass);
   var hitDie = (cls && CLASS_HIT_DIE[cls]) || 8;
@@ -3928,13 +4720,17 @@ function wizardFinish(){
     } else if(w.asiPicks[0]){
       state.abilities[w.asiPicks[0]] = (Number(state.abilities[w.asiPicks[0]])||10) + 2;
     }
-  } else if(mode==="levelup" && w.asiChoice==="feat" && w.featName){
-    state.features.push({name:w.featName, source:"Feat", description:w.featDescription||"", effects:[]});
+  } else if(mode==="levelup" && w.asiChoice==="feat" && w.featName==="__custom"){
+    state.features.push({name:w.featCustomName, source:"Feat", description:w.featDescription||"", effects:[]});
+  } else if(mode==="levelup" && w.asiChoice==="feat" && FEAT_DATA[w.featName]){
+    applyFeat(w.featName, w.featValues, w.featAbility||null, totalLevel(), "Taken at level "+totalLevel()+".");
   }
 
   (w.newFeatures||[]).forEach(function(f){
     if(f.name) state.features.push({name:f.name, source:f.source||"Class Feature", description:f.description||"", effects:[]});
   });
+  if(mode==="levelup") applySpeciesLevels(w.oldTotalLevel, totalLevel());
+  syncClassFeatures();
 
   closeWizard();
   rebuildAll();

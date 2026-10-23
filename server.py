@@ -1134,7 +1134,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     existing = json.load(f)
             except Exception:
                 existing = {}
-        existing["bastionEnabled"] = bool(body.get("bastionEnabled"))
+        # Only update the settings that were sent, so saving one setting doesn't reset another.
+        if "bastionEnabled" in body:
+            existing["bastionEnabled"] = bool(body.get("bastionEnabled"))
+        if "books" in body:
+            books = body.get("books")
+            if not isinstance(books, list) or not all(isinstance(b, str) and len(b) <= 40 for b in books):
+                self.send_error(400, "Invalid books list")
+                return
+            existing["books"] = books[:50]
         with open(path, "w", encoding="utf-8") as f:
             json.dump(existing, f, indent=2)
         self.write_json(200, {"ok": True})

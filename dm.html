@@ -20,6 +20,7 @@
       <button type="button" class="dmscreen-view-btn" data-view="bastion">Bastion</button>
       <button type="button" class="dmscreen-view-btn" data-view="sessions">Session Planner</button>
       <button type="button" class="dmscreen-view-btn" data-view="world">World</button>
+      <button type="button" class="dmscreen-view-btn" data-view="books">Books</button>
     </div>
     <button class="btn" id="btn-dm-logout">Log Out</button>
   </header>
@@ -137,6 +138,15 @@
       <iframe class="bas-frame bas-frame-dm" id="dm-bastion-frame" title="Bastion"></iframe>
     </div>
 
+    <div class="dmscreen-view" id="dmscreen-view-books" style="display:none;">
+      <section class="panel dm-books-panel">
+        <div class="section-title">Books</div>
+        <div class="footer-line" style="margin-bottom:var(--sp-3);">Choose which books players in this campaign can use. The character wizard only offers species, backgrounds, classes, subclasses and feats from these books.</div>
+        <div id="dm-books-list"></div>
+        <div class="footer-line" id="dm-books-status"></div>
+      </section>
+    </div>
+
     <div class="dmscreen-view" id="dmscreen-view-sessions" style="display:none;">
       <div class="dmscreen-col-header sp-toolbar">
         <select id="sp-session-select"></select>
@@ -166,6 +176,7 @@
   </main>
 </div>
 
+<script src="rules-data.js"></script>
 <script src="app.js"></script>
 <script src="dm.js"></script>
 </body>
